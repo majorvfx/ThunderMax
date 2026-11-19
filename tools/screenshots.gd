@@ -1,0 +1,74 @@
+extends SceneTree
+## Renders review screenshots of the current build into docs/screenshots.
+## Needs a display (or xvfb-run on Linux):
+##   godot --path . --resolution 1280x720 --script res://tools/screenshots.gd
+
+const OUT := "res://docs/screenshots/"
+const ScriptedDriver = preload("res://tests/run_tests.gd").ScriptedDriver
+
+
+func _initialize() -> void:
+	_run.call_deferred()
+
+
+func _sim(seconds: float) -> void:
+	for i in int(seconds * 60.0):
+		await physics_frame
+	await process_frame
+
+
+func _run() -> void:
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT))
+	var t := TitleScreen.new()
+	root.add_child(t)
+	await _sim(0.3)
+	_save("title")
+	t.queue_free()
+
+	var m := YardMatch.new()
+	root.add_child(m)
+	await _sim(1.5)
+	var drv := ScriptedDriver.new()
+	m.player.driver = drv
+	# Line up behind a drone on the west side and open fire.
+	var drone: ArcadeVehicle = m.drones[0]
+	drone.driver = ScriptedDriver.new()
+	drone.global_transform = Transform3D(Basis(Vector3.UP, 0.4), Vector3(-52, 1.2, -6))
+	m.player.global_transform = Transform3D(Basis(Vector3.UP, -0.15), Vector3(-56, 1.2, 22))
+	m.player.reset_physics_interpolation()
+	m.camera.snap()
+	await _sim(0.6)
+	drv.frame.fire_gun = true
+	await _sim(1.2)
+	_save("gunfight")
+	drv.frame.fire_gun = false
+	# Kicker jump in the east lane.
+	m.player.global_transform = Transform3D(Basis.IDENTITY, Vector3(68, 1.2, 75))
+	m.player.reset_physics_interpolation()
+	m.camera.snap()
+	drv.frame.throttle = 1.0
+	drv.frame.turbo = true
+	var guard := 0
+	while m.player.global_position.z > 25.0 and guard < 600:
+		await physics_frame
+		guard += 1
+	await _sim(0.35)
+	_save("kicker_jump")
+	drv.frame.throttle = 0.0
+	drv.frame.turbo = false
+	m.pause_menu.open()
+	await process_frame
+	await process_frame
+	_save("pause_menu")
+	m.pause_menu._resume()
+	m.tuning.open(m.player)
+	await process_frame
+	await process_frame
+	_save("tuning_panel")
+	quit()
+
+
+func _save(shot: String) -> void:
+	var img := root.get_viewport().get_texture().get_image()
+	img.save_png(ProjectSettings.globalize_path(OUT + shot + ".png"))
+	print("saved ", shot)

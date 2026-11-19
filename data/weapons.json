@@ -1,0 +1,18 @@
+{
+  "machine_gun": {
+    "name": "Twin Rivet Guns",
+    "fire_interval": 0.1,
+    "damage": 1.5,
+    "heat_per_shot": 0.045,
+    "cool_rate": 0.4,
+    "recover_below": 0.35,
+    "range_m": 90.0,
+    "aim_assist_deg": 7.0,
+    "spread_deg": 0.8
+  },
+  "barrel_explosion": {
+    "radius": 8.0,
+    "damage": 30.0,
+    "impulse": 9000.0
+  }
+}

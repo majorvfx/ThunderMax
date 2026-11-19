@@ -1,0 +1,4 @@
+{
+  "health": { "amount": 35, "respawn_seconds": 15, "label": "Patch Kit" },
+  "turbo": { "amount": 100, "respawn_seconds": 12, "label": "Nitro Can" }
+}
