@@ -115,12 +115,15 @@ func _fire_projectile(kind: String, m: Dictionary) -> void:
 	var gun := vehicle.get_node_or_null("MachineGun") as MachineGun
 	if gun != null:
 		target = gun.current_target
+	if target == null and m.has("curve_deg_per_s"):
+		target = Targeting.in_cone(vehicle, fwd, float(m.get("view_cone_deg", 25.0)), 90.0)
 	var p := Projectile.new()
 	p.setup(kind, vehicle, m)
 	var start := xf.origin + fwd * 2.6 + xf.basis.y * 0.7
+	# Cold Snap leaves straight ahead and bends slightly toward the target.
+	if kind == "cold_snap":
+		p.homing_target = target
 	var dir := fwd
-	if kind == "cold_snap" and target != null:
-		dir = (target.global_position + Vector3.UP * 0.3 - start).normalized()
 	var vel := dir * float(m.get("speed", 40.0))
 	if kind == "fire_jug":
 		vel = fwd * 22.0 + Vector3.UP * 8.0 + vehicle.linear_velocity * 0.6
@@ -152,10 +155,9 @@ func _tailgunner(m: Dictionary) -> bool:
 	var start := xf.origin + back * 2.8 + xf.basis.y * 0.7
 	var dir := back
 	var target := Targeting.in_cone(vehicle, back, float(m.get("aim_cone_deg", 30.0)), float(m.get("aim_range_m", 70.0)))
-	if target != null:
-		dir = (target.global_position + Vector3.UP * 0.3 - start).normalized()
 	var p := Projectile.new()
 	p.setup("cold_snap", vehicle, freeze)
+	p.homing_target = target   # leaves straight back and bends slightly toward them
 	vehicle.get_parent().add_child(p)
 	# Carry the car's own velocity so the shot leaves cleanly when you're driving away.
 	p.launch(start, dir * float(freeze.get("speed", 75.0)) + vehicle.linear_velocity)

@@ -20,27 +20,34 @@ design.
 - `status_effects.gd`: combo energy and per-move cooldowns, plus the timed shield, freeze and
   burn effects on a car.
 - `vehicle_stats.gd`: every tuning number for a vehicle, loaded from JSON.
-- `game_data.gd`: JSON loading and saved tuning sessions.
+- `game_data.gd`: JSON loading, the car roster (`data/roster.json`), each car's own special
+  (the `signature` block in its vehicle file) and saved tuning sessions.
 
 ## Presentation (`game/`)
 
 - `vehicle/arcade_vehicle.gd`: a `RigidBody3D`. Each physics step it casts four suspension rays,
   converts world velocity into car space, calls `ArcadeHandling.step`, and writes the result
   back. Rams are detected from sudden velocity changes and passed to `CombatRules`.
-- `vehicle/vehicle_factory.gd`: builds a car from its data file (body, collider, visual, gun,
-  engine sound).
+- `vehicle/vehicle_factory.gd`: builds a car from its data file (body, collider sized from the
+  file's `body_*` numbers, visual, gun, engine sound). `vehicle_visual.gd` has a placeholder
+  model per `paint` (rust, cinder, hogshead, sawback, drone).
 - `input/`: per-player actions (`p1_accelerate`...) with five Xbox layouts (Standard by default, three alternates and Modern). Built
   for up to four players, one pad each, for split-screen in Milestone 3.
 - `weapons/combo_controller.gd`: reads the combo presses from the car's `ControlFrame`, runs
   them through `ComboBuffer`, spends energy and performs the move. Bots call `request_move()`.
-- `weapons/special_weapons.gd`: special weapon ammo, cycling and firing.
+- `weapons/special_weapons.gd`: special weapon ammo, cycling and firing, plus the car's own
+  recharging special (Slag Hook, Ember Fan, Dead Weight, Ripsaw), chosen by its `kind`.
 - `weapons/projectile.gd`, `scrap_mine.gd`, `fire_pool.gd`: the things combos and specials
   leave in the world. Projectiles sweep a ray each step so fast shots don't pass through walls.
 - `ai/drone_driver.gd`: Scrap Drone brain. Produces a `ControlFrame` like a player does, so bots
   and players drive through the same code.
 - `camera/chase_camera.gd`, `weapons/machine_gun.gd`, `pickups/`, `props/`, `arena/`, `ui/`,
   `audio/`, `fx/`.
-- `match/yard_match.gd`: the Milestone 1 sandbox (spawning, respawns, messages, menus).
+- `ui/car_select.gd`: the car select screen; the choice is saved in `user://settings.cfg`.
+- `fx/neon.gd`: the Neon Wasteland palette (shared by the arena, cars and UI), glowing tube
+  materials and strips, the slanted display font, and the dusk sky shader. Each car's neon trim
+  colour is its `accent` in the vehicle file.
+- `match/yard_match.gd`: the Foundry Yard sandbox (spawning, respawns, messages, menus).
 
 ## Physics
 

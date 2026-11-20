@@ -14,6 +14,7 @@ const LAYOUT_VERSION := 2
 static var fps_mode := "auto"
 static var quality := "medium"
 static var control_preset := InputSetup.DEFAULT_PRESET
+static var car := "rustjaw"       ## the player's car, from data/roster.json
 static var sfx_volume := 1.0
 static var music_volume := 0.7
 static var _loaded := false
@@ -34,6 +35,9 @@ static func load_settings() -> void:
 	# Settings saved before the D-pad Standard layout became the default move to it once.
 	if int(cfg.get_value("controls", "layout_version", 1)) < LAYOUT_VERSION:
 		control_preset = InputSetup.DEFAULT_PRESET
+	car = str(cfg.get_value("player", "car", car))
+	if not GameData.roster().has(car):
+		car = "rustjaw"
 	sfx_volume = float(cfg.get_value("audio", "sfx", sfx_volume))
 	music_volume = float(cfg.get_value("audio", "music", music_volume))
 	InputBindings.load_from(cfg)
@@ -50,6 +54,7 @@ static func save_settings() -> void:
 	cfg.set_value("display", "quality", quality)
 	cfg.set_value("controls", "preset", control_preset)
 	cfg.set_value("controls", "layout_version", LAYOUT_VERSION)
+	cfg.set_value("player", "car", car)
 	cfg.set_value("audio", "sfx", sfx_volume)
 	cfg.set_value("audio", "music", music_volume)
 	InputBindings.save_to(cfg)

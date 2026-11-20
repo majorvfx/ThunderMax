@@ -25,8 +25,8 @@ func _ready() -> void:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 8)
 	panel.add_child(col)
-	col.add_child(UiStyle.label("HANDLING TUNING", 28, Color(0.95, 0.6, 0.2)))
-	col.add_child(UiStyle.label("D-pad up/down: pick   left/right: change   B: close", 15, Color(0.7, 0.66, 0.6)))
+	col.add_child(UiStyle.heading("HANDLING TUNING", 30))
+	col.add_child(UiStyle.label("D-pad up/down: pick   left/right: change   B: close", 15, Neon.DIM))
 	var buttons := HBoxContainer.new()
 	col.add_child(buttons)
 	var save := UiStyle.button("Save", _save)
@@ -42,7 +42,7 @@ func _ready() -> void:
 	close.custom_minimum_size = Vector2(110, 0)
 	buttons.add_child(close)
 	_first = save
-	_status = UiStyle.label("", 15, Color(0.7, 0.66, 0.6))
+	_status = UiStyle.label("", 15, Neon.DIM)
 	col.add_child(_status)
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL

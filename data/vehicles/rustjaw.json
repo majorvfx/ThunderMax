@@ -3,8 +3,11 @@
   "name": "Rustjaw",
   "class": "medium",
   "paint": "rust",
+  "accent": "#ff2a8c",
   "description": "A plow-nosed coupe welded together from three dead sedans. Heavy enough to shove, quick enough to run.",
-  "health": { "max_health": 100 },
+  "health": {
+    "max_health": 100
+  },
   "drive": {
     "max_speed": 30.0,
     "accel": 20.0,
@@ -35,6 +38,11 @@
   },
   "body": {
     "mass": 1400.0,
+    "body_width": 1.9,
+    "body_height": 0.75,
+    "body_length": 4.3,
+    "wheel_track": 0.85,
+    "wheel_base": 1.3,
     "gravity_scale": 1.6,
     "air_control": 0.3,
     "air_upright": 3.0,
@@ -43,7 +51,10 @@
     "suspension_hz": 2.2,
     "suspension_damping": 0.55
   },
-  "combat": { "ram_power": 1.2, "ram_armor": 1.1 },
+  "combat": {
+    "ram_power": 1.2,
+    "ram_armor": 1.1
+  },
   "turbo": {
     "turbo_capacity": 100.0,
     "turbo_drain": 35.0,
@@ -54,5 +65,19 @@
     "turbo_kick_cost": 6.0,
     "turbo_air_thrust": 16.0,
     "turbo_air_lift": 7.0
+  },
+  "signature": {
+    "id": "slag_hook",
+    "name": "Slag Hook",
+    "kind": "hook",
+    "description": "A barbed harpoon on a chain. Hooks the car ahead and drags it onto your plow.",
+    "damage": 10.0,
+    "speed": 62.0,
+    "life_s": 1.0,
+    "pull_impulse": 11000.0,
+    "curve_deg_per_s": 14.0,
+    "view_cone_deg": 25.0,
+    "recharge_s": 14.0,
+    "cooldown": 0.6
   }
 }

@@ -2,6 +2,7 @@
   "_note": "Pickup special weapons. Weapon crates in the arena hand out 'crate_amount' of a random one.",
   "crate_amount": 2,
   "max_ammo": 6,
+  "_curve_note": "curve_deg_per_s bends a shot gently toward a target inside view_cone_deg of where it is heading: about a tenth of the Seeker's turn rate. Leave both out for a dead-straight weapon.",
   "weapons": {
     "seeker": {
       "name": "Seeker",
@@ -14,9 +15,11 @@
     },
     "firebrand": {
       "name": "Firebrand",
-      "description": "Fast straight rocket that leaves the target burning.",
+      "description": "Fast rocket that leaves the target burning. Bends slightly toward a target ahead.",
       "damage": 12.0,
       "speed": 70.0,
+      "curve_deg_per_s": 14.0,
+      "view_cone_deg": 25.0,
       "burn_s": 2.5,
       "burn_dps": 5.0,
       "life_s": 2.0,
@@ -24,7 +27,7 @@
     },
     "sledge": {
       "name": "Sledge",
-      "description": "Slow, heavy warhead. Huge damage and a hard shove.",
+      "description": "Slow, heavy warhead. Flies dead straight. Huge damage and a hard shove.",
       "damage": 38.0,
       "speed": 32.0,
       "impulse": 14000.0,

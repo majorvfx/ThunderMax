@@ -3,10 +3,10 @@
 An original vehicular-combat arena game: dark, serious, with a little dark humor.
 Built in Godot 4, structured so the game rules and data can move to Unreal later.
 
-This build is **Milestone 1 (first playable)** plus the first part of **Milestone 2 (core
-combat)**: one car, one arena, the machine gun, D-pad combo moves with an energy meter, pickup
-special weapons, drones that fight back, Xbox controller support, and the arcade handling model
-with a live tuning panel. All art and audio are placeholders made in code.
+This build is **Milestone 1 (first playable)** plus most of **Milestone 2 (core combat)**: four
+cars with their own specials, one arena, the machine gun, D-pad combo moves with an energy
+meter, pickup special weapons, drones that fight back, Xbox controller support, and the arcade
+handling model with a live tuning panel. All art and audio are placeholders made in code.
 
 ![Title](docs/screenshots/title.png)
 
@@ -20,9 +20,37 @@ To skip the editor, run the game directly:
 `Godot_v4.7.2-stable_win64.exe --path "C:\path\to\ThunderMax"` (a `.bat` file with that line
 works as a desktop shortcut).
 
-Press **A** or **Enter** on the title screen. You start in the Foundry Yard in Rustjaw, with
-three Scrap Drones running laps. Get close and they turn on you. Wreck them, grab pickups and
-weapon crates, set off the fuel drums.
+Press **A** or **Enter** on the title screen, pick a car (left / right, then **A**), and you
+start in the Foundry Yard with three Scrap Drones running laps. Get close and they turn on you.
+Wreck them, grab pickups and weapon crates, set off the fuel drums. Your car is remembered for
+next time; **Change car** in the pause menu goes back to the select screen.
+
+## Cars
+
+![Car select](docs/screenshots/car_select.png)
+
+| Car | Class | Armor | Top speed | Own special |
+| --- | --- | --- | --- | --- |
+| **Rustjaw**: a plow-nosed coupe welded from three dead sedans | Medium | 100 | 30 m/s | **Slag Hook**: a barbed harpoon on a chain that hooks the car ahead and drags it onto your plow |
+| **Cinder**: a stripped dune buggy, all roll cage and fuel cell | Light | 70 | 34 m/s | **Ember Fan**: five little rockets in a fan; each one sets a brief fire |
+| **Hogshead**: a fuel tanker poured full of concrete | Heavy | 150 | 25 m/s | **Dead Weight**: drops the tank on its jacks; cars within 12 m are hurt and thrown clear |
+| **Sawback**: a street sweeper with blades where the brushes were | Medium | 110 | 28 m/s | **Ripsaw**: a spinning blade that runs along the ground and bounces off walls three times |
+
+Each car's own special sits in the special weapon list alongside the pickups, holds one shot and
+recharges on its own (12 to 16 seconds; the thin bar under the special panel). It's selected
+when you start. Pick up a weapon crate and the new weapon is selected; cycle back to your own
+with previous / next special, and it comes back by itself when the pickups run out. Tailgunner
+fires it out the back like any other special. Slag Hook, Ember Fan and Ripsaw bend slightly toward
+a target ahead, like the Firebrand.
+
+Every car's numbers and its special live in `data/vehicles/<car>.json`, and the select screen
+order in `data/roster.json`, so new cars are mostly data.
+
+| Slag Hook | Ember Fan |
+| --- | --- |
+| ![Slag Hook](docs/screenshots/sig_slag_hook.png) | ![Ember Fan](docs/screenshots/sig_ember_fan.png) |
+| **Dead Weight** | **Ripsaw** |
+| ![Dead Weight](docs/screenshots/sig_dead_weight.png) | ![Ripsaw](docs/screenshots/sig_ripsaw.png) |
 
 ## Controls
 
@@ -36,9 +64,9 @@ can also be remapped (see **Remapping** below); the tables show the defaults.
 | Action | Standard (default) | Alternate 1 | Alternate 2 | Shoulders |
 | --- | --- | --- | --- | --- |
 | Gas | X / D-pad up | A / D-pad up | A / D-pad up | RT / D-pad up |
-| Brake, then reverse | Y / D-pad down | LT / D-pad down | LT / D-pad down | RB / D-pad down |
+| Brake, then reverse | B / D-pad down | LT / D-pad down | LT / D-pad down | RB / D-pad down |
 | Steer | D-pad left / right (or left stick) | same | same | same |
-| Turbo (rocket) | B | Y | Y | LB |
+| Turbo (rocket) | Y | Y | Y | LB |
 | Tight turn | A | RT | RT | LT |
 | Next special | RB | RB | RB | Y |
 | Previous special | LB | LB | LB | B |
@@ -74,9 +102,6 @@ D-pad steering ramps in over a fraction of a second instead of snapping to full 
 left stick also steers in every layout. While Menu is held, D-pad presses are view controls,
 not combo presses (they still nudge the gas, brake or steering).
 
-In Standard, turbo is on **B** and brake / reverse is on **Y** (swapped from the classic pad,
-so the rocket sits under your thumb).
-
 **Turbo** is a rocket. It kicks you forward the moment it lights, keeps pulling hard right up to
 turbo top speed, and works in the air: hold it after a jump (or a Spring Jack) and the rockets
 drive you forward and hold off the fall, so you carry much further. Flames shoot out of the two
@@ -99,7 +124,7 @@ the screen while you enter them, and the pause menu lists every move.
 | Move | Xbox inputs | Keyboard | Energy | What it does |
 | --- | --- | --- | --- | --- |
 | Scrap Mine | Right, Left, Down | L, J, K | 25 | Drops a spiked mine behind you. It blows up the next car to touch it (three out at a time). |
-| Cold Snap | Left, Right, Up | J, L, I | 35 | Coolant round that freezes the car it hits for about 2 seconds. Aims at your lock-on target. |
+| Cold Snap | Left, Right, Up | J, L, I | 35 | Coolant round that freezes the car it hits for about 2 seconds. Leaves straight and bends slightly toward a target ahead. |
 | Spring Jack | Up, Up, Left | I, I, J | 25 | Hydraulic jump. Hop walls, dodge mines. Ground only. |
 | Rivet Storm | Hold RT + Up, Down, Left, Right, Right, Left, Down, Up | Hold Ctrl + I, K, J, L, L, J, K, I | 50 | For 4 seconds the guns fire twice as fast, hit 1.5 times harder and never overheat. |
 | Fire Jug | Right, Left, Up | L, J, I | 35 | Lobs a jug of fuel ahead that leaves a burning pool. Cars in it catch fire. |
@@ -124,13 +149,13 @@ there.
 
 ### Special weapons
 
-Weapon crates (yellow band) give two shots of a random special. Hold up to six of each, switch
+Weapon crates (cyan band) give two shots of a random special. Hold up to six of each, switch
 with previous / next special, and fire with the special button.
 
 | Special | What it does |
 | --- | --- |
 | Seeker | Homing missile; follows your lock-on target. |
-| Firebrand | Fast incendiary round; sets the target alight. |
+| Firebrand | Fast incendiary round; sets the target alight. Bends slightly toward a target ahead. |
 | Sledge | Slow, heavy rocket that fires straight and shoves what it hits. |
 
 Their numbers live in `data/specials.json`.
@@ -154,18 +179,25 @@ to the right stick.
 
 ## What's in Milestone 2 so far
 
+- **Four cars**, each with its own recharging special, and a car select screen (see **Cars**).
 - **Eight combo moves** on the D-pad with an energy meter, including a held long code (see above).
 - **Three special weapons** from weapon crates, with ammo per weapon and cycling.
 - **Status effects**: shielded, frozen, burning, cloaked and Rivet Storm, shown on the car and
   on the HUD.
 - **Rocket turbo**: a nitrous kick, a push that doesn't fade, thrust in the air, and flames out
-  the back. B is turbo in the Standard layout.
+  the back.
+- **Neon Wasteland look**: an '80s idea of the future, left to rot. A banded sun behind a
+  wireframe ridge, neon tubes and signs on the Yard's walls, a failing cyan grid on the floor,
+  neon trim and underglow in each car's own colour, and chrome-and-neon menus. The palette lives
+  in `game/fx/neon.gd`, so the whole look can be retuned in one place.
+- **Weapons curve slightly**: Firebrand, Cold Snap and the Tailgunner shots bend gently toward a
+  target in front of them. The Sledge flies dead straight and the Seeker still homes.
 - **Scrap Drones fight back**: they hunt you when you're close, fire their guns in bursts,
   drop mines or fire a Tailgunner round when you chase them, raise Bulwark when hurt, and throw
   Cold Snaps. They lose you while you're under Blackout.
 
-Still to come in Milestone 2: more cars with their own specials, a second arena with
-destructible scenery, and bot difficulty levels.
+Still to come in Milestone 2: a second arena with destructible scenery, and bot difficulty
+levels.
 
 ![Cold Snap](docs/screenshots/cold_snap.png)
 
@@ -178,7 +210,8 @@ destructible scenery, and bot difficulty levels.
 - **Twin Rivet Guns** with unlimited ammo and an overheat bar, light aim assist and a lock-on
   bracket.
 - **Scrap Drones**: driverless cars that lap the yard.
-- **Pickups**: Patch Kits (armor), Nitro Cans (turbo) and, from Milestone 2, weapon crates.
+- **Pickups**: Patch Kits (armor, green), Nitro Cans (turbo, amber) and, from Milestone 2, weapon
+  crates (cyan).
 - **Ram damage** from hard hits, rumble on big hits, wreck and respawn.
 - **Frame rate**: physics always runs at 60 Hz. Display is Auto (60, dropping to a steady 30 on
   slower machines), 30, or 60. Graphics presets Low, Medium, High.

@@ -57,6 +57,9 @@ func setup(vehicle_stats: VehicleStats, vehicle_driver: RefCounted, player: bool
 	health = CombatRules.Health.new(stats.max_health)
 	drive = ArcadeHandling.DriveState.new()
 	drive.turbo = stats.turbo_capacity
+	var tx := stats.wheel_track
+	var tz := stats.wheel_base
+	wheel_offsets = [Vector3(-tx, -0.1, -tz), Vector3(tx, -0.1, -tz), Vector3(-tx, -0.1, tz), Vector3(tx, -0.1, tz)]
 	var combo_data: Variant = GameData.load_json(GameData.COMBOS_PATH)
 	if typeof(combo_data) == TYPE_DICTIONARY:
 		status.configure(float(combo_data.get("energy_max", 100.0)), float(combo_data.get("energy_regen", 6.0)))

@@ -8,6 +8,7 @@ const WEAPONS_PATH := "res://data/weapons.json"
 const PICKUPS_PATH := "res://data/pickups.json"
 const COMBOS_PATH := "res://data/combos.json"
 const SPECIALS_PATH := "res://data/specials.json"
+const ROSTER_PATH := "res://data/roster.json"
 const TUNING_DIR := "user://tuning/"
 
 
@@ -35,6 +36,26 @@ static func load_vehicle(id: String, include_saved_tuning: bool = true) -> Vehic
 			if typeof(saved) == TYPE_DICTIONARY:
 				stats.apply_dict(saved)
 	return stats
+
+
+## The cars a player can pick, in select-screen order.
+static func roster() -> Array[String]:
+	var out: Array[String] = []
+	var d: Variant = load_json(ROSTER_PATH)
+	if typeof(d) == TYPE_DICTIONARY:
+		for id in d.get("cars", []):
+			out.append(String(id))
+	if out.is_empty():
+		out.append("rustjaw")
+	return out
+
+
+## A car's own special weapon ("signature" in its data file), or {} if it has none.
+static func signature(vehicle_id: String) -> Dictionary:
+	var d: Variant = load_json(VEHICLE_DIR + vehicle_id + ".json")
+	if typeof(d) == TYPE_DICTIONARY and typeof(d.get("signature")) == TYPE_DICTIONARY:
+		return d["signature"]
+	return {}
 
 
 static func save_tuning(stats: VehicleStats) -> String:

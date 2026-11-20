@@ -4,6 +4,7 @@ extends Control
 
 signal resumed
 signal restart_requested
+signal change_car_requested
 signal quit_requested
 signal settings_changed
 
@@ -39,7 +40,7 @@ func _ready() -> void:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 10)
 	row.add_child(col)
-	col.add_child(UiStyle.label("PAUSED", 34, Color(0.95, 0.6, 0.2)))
+	col.add_child(UiStyle.heading("PAUSED", 38))
 	_first = UiStyle.button("Resume", _resume)
 	col.add_child(_first)
 	_controls_btn = UiStyle.button("", _toggle_controls)
@@ -51,6 +52,7 @@ func _ready() -> void:
 	_quality_btn = UiStyle.button("", _toggle_quality)
 	col.add_child(_quality_btn)
 	col.add_child(UiStyle.button("Restart the Yard", func(): restart_requested.emit()))
+	col.add_child(UiStyle.button("Change car", func(): change_car_requested.emit()))
 	col.add_child(UiStyle.button("Quit to title", func(): quit_requested.emit()))
 
 	_help = GridContainer.new()
@@ -128,7 +130,7 @@ func _refresh() -> void:
 	_build_move_list()
 	for c in _help.get_children():
 		c.queue_free()
-	var accent := Color(0.95, 0.6, 0.2)
+	var accent := Neon.CYAN
 	_help.add_child(UiStyle.label("", 16))
 	_help.add_child(UiStyle.label("CONTROLLER", 16, accent))
 	_help.add_child(UiStyle.label("KEYBOARD", 16, accent))
@@ -136,7 +138,7 @@ func _refresh() -> void:
 	for a in InputBindings.LABELS:
 		_help.add_child(UiStyle.label(InputBindings.LABELS[a], 14))
 		_help.add_child(UiStyle.label(InputBindings.pad_text(1, a), 14))
-		_help.add_child(UiStyle.label(InputBindings.key_text(1, a), 14, Color(0.7, 0.66, 0.6)))
+		_help.add_child(UiStyle.label(InputBindings.key_text(1, a), 14, Neon.DIM))
 
 
 ## Combo move list from data/combos.json. Inputs are written as words because
@@ -144,8 +146,8 @@ func _refresh() -> void:
 func _build_move_list() -> void:
 	for c in _moves.get_children():
 		c.queue_free()
-	var accent := Color(0.95, 0.6, 0.2)
-	var dim := Color(0.7, 0.66, 0.6)
+	var accent := Neon.CYAN
+	var dim := Neon.DIM
 	_moves.add_child(UiStyle.label("COMBO MOVES", 16, accent))
 	_moves.add_child(UiStyle.label("Tap the combo directions quickly", 14, dim))
 	var data: Variant = GameData.load_json(GameData.COMBOS_PATH)

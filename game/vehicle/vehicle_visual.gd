@@ -25,15 +25,32 @@ var _flame_light: OmniLight3D
 var _flame_level := 0.0
 var _flare_time := 0.0
 var _was_boosting := false
+var _spinners: Array[Node3D] = []   ## parts that spin all the time (Sawback's blades)
+
+## Status shells (Bulwark cage, frost, Blackout ghost) are sized for the Rustjaw and
+## scaled to fit each body.
+const SHELL_SCALE := {
+	"cinder": Vector3(0.92, 1.05, 0.86),
+	"hogshead": Vector3(1.2, 1.5, 1.27),
+	"sawback": Vector3(1.05, 1.15, 1.04),
+}
 
 
 func build(v: ArcadeVehicle, paint_name: String) -> void:
 	vehicle = v
 	paint = paint_name
-	if paint == "drone":
-		_build_drone()
-	else:
-		_build_rustjaw()
+	match paint:
+		"drone":
+			_build_drone()
+		"cinder":
+			_build_cinder()
+		"hogshead":
+			_build_hogshead()
+		"sawback":
+			_build_sawback()
+		_:
+			_build_rustjaw()
+	_build_neon_trim()
 	_build_wheels()
 	_build_damage_fx()
 	for c in get_children():
@@ -91,6 +108,8 @@ func _process(delta: float) -> void:
 		_beacon.visible = not _cloaked and fmod(_beacon_time, 0.9) < 0.45
 	if not _flames.is_empty():
 		_update_flames(delta)
+	for s in _spinners:
+		s.rotate_y(delta * 18.0)
 
 
 ## Turbo flames: short and hot on the ground, longer in the air so a boosted jump
@@ -158,6 +177,124 @@ func _build_rustjaw() -> void:
 	for x in [-0.62, 0.62]:
 		P.box(self, Vector3(0.3, 0.14, 0.06), Vector3(x, 0.18, -2.11), VehicleVisualParts.material("headlight"))
 		P.box(self, Vector3(0.35, 0.1, 0.06), Vector3(x, 0.25, 2.11), VehicleVisualParts.material("taillight"))
+
+
+## Cinder: a stripped dune buggy. Roll cage, open seat, fuel cell, engine out the back.
+func _build_cinder() -> void:
+	var paint_mat := VehicleVisualParts.material("cinder")
+	var steel := VehicleVisualParts.material("steel")
+	var P := VehicleVisualParts
+	P.box(self, Vector3(1.4, 0.18, 3.3), Vector3(0, -0.12, 0), steel)            # floor pan
+	var nose := P.box(self, Vector3(1.3, 0.28, 0.9), Vector3(0, 0.02, -1.45), paint_mat)
+	nose.rotation_degrees.x = 8.0
+	P.box(self, Vector3(1.5, 0.12, 0.7), Vector3(0, 0.12, 1.05), paint_mat)     # rear deck
+	P.box(self, Vector3(0.5, 0.45, 0.5), Vector3(0, 0.2, 0.0), VehicleVisualParts.material("tire"))  # seat
+	P.cylinder(self, 0.22, 0.9, Vector3(0, 0.35, 0.55), Vector3(0, 0, 90), VehicleVisualParts.material("fuel_cell"))
+	P.box(self, Vector3(0.8, 0.45, 0.7), Vector3(0, 0.32, 1.3), steel)         # engine
+	# Roll cage
+	for x in [-0.62, 0.62]:
+		P.box(self, Vector3(0.07, 0.95, 0.07), Vector3(x, 0.45, -0.45), steel)
+		P.box(self, Vector3(0.07, 0.85, 0.07), Vector3(x, 0.4, 0.65), steel)
+		P.box(self, Vector3(0.07, 0.07, 1.15), Vector3(x, 0.92, 0.1), steel)
+		var brace := P.box(self, Vector3(0.07, 0.07, 1.0), Vector3(x, 0.45, -0.95), steel)
+		brace.rotation_degrees.x = 40.0
+	for z in [-0.45, 0.65]:
+		P.box(self, Vector3(1.3, 0.07, 0.07), Vector3(0, 0.92, z), steel)
+	# Light bar on the cage
+	for x in [-0.4, -0.13, 0.13, 0.4]:
+		P.box(self, Vector3(0.16, 0.12, 0.06), Vector3(x, 1.0, -0.5), VehicleVisualParts.material("headlight"))
+	for x in [-0.45, 0.45]:
+		P.box(self, Vector3(0.25, 0.08, 0.05), Vector3(x, 0.2, 1.42), VehicleVisualParts.material("taillight"))
+	# Rocket nozzles beside the engine.
+	for x in [-0.3, 0.3]:
+		P.cylinder(self, 0.13, 0.3, Vector3(x, 0.25, 1.75), Vector3(90, 0, 0), steel)
+		P.cylinder(self, 0.09, 0.04, Vector3(x, 0.25, 1.91), Vector3(90, 0, 0), VehicleVisualParts.material("soot"))
+		_nozzles.append(Vector3(x, 0.25, 1.93))
+
+
+## Hogshead: a tanker truck. Flat-nosed cab, a round tank full of concrete, bull bar.
+func _build_hogshead() -> void:
+	var tank_mat := VehicleVisualParts.material("tanker")
+	var rust := VehicleVisualParts.material("rust")
+	var steel := VehicleVisualParts.material("steel")
+	var P := VehicleVisualParts
+	P.box(self, Vector3(2.2, 0.45, 5.3), Vector3(0, -0.05, 0), steel)           # chassis
+	P.box(self, Vector3(2.2, 1.15, 1.5), Vector3(0, 0.6, -1.85), rust)          # cab
+	P.box(self, Vector3(2.0, 0.45, 0.06), Vector3(0, 0.85, -2.61), VehicleVisualParts.material("glass"))
+	P.box(self, Vector3(2.1, 0.1, 1.4), Vector3(0, 1.22, -1.85), steel)         # cab roof plate
+	P.cylinder(self, 0.92, 3.3, Vector3(0, 0.95, 0.8), Vector3(90, 0, 0), tank_mat)
+	for z in [-0.6, 0.3, 1.2, 2.1]:
+		P.cylinder(self, 0.95, 0.1, Vector3(0, 0.95, z), Vector3(90, 0, 0), steel)
+	P.box(self, Vector3(0.5, 0.25, 0.5), Vector3(0, 1.9, 0.5), steel)           # hatch
+	# Bull bar and bumper
+	P.box(self, Vector3(2.4, 0.55, 0.2), Vector3(0, 0.05, -2.75), steel)
+	for x in [-0.8, 0.0, 0.8]:
+		P.box(self, Vector3(0.12, 0.9, 0.12), Vector3(x, 0.35, -2.75), steel)
+	# Stacks behind the cab
+	for x in [-0.98, 0.98]:
+		P.cylinder(self, 0.1, 1.4, Vector3(x, 1.3, -1.0), Vector3.ZERO, steel)
+	for x in [-0.75, 0.75]:
+		P.box(self, Vector3(0.35, 0.18, 0.06), Vector3(x, 0.3, -2.86), VehicleVisualParts.material("headlight"))
+		P.box(self, Vector3(0.35, 0.12, 0.06), Vector3(x, 0.25, 2.66), VehicleVisualParts.material("taillight"))
+	for x in [-0.55, 0.55]:
+		P.cylinder(self, 0.18, 0.36, Vector3(x, 0.05, 2.8), Vector3(90, 0, 0), steel)
+		P.cylinder(self, 0.13, 0.04, Vector3(x, 0.05, 2.99), Vector3(90, 0, 0), VehicleVisualParts.material("soot"))
+		_nozzles.append(Vector3(x, 0.05, 3.01))
+
+
+## Sawback: a street sweeper. Cab up front, hopper behind, two blades under the nose.
+func _build_sawback() -> void:
+	var paint_mat := VehicleVisualParts.material("sweeper")
+	var rust := VehicleVisualParts.material("rust")
+	var steel := VehicleVisualParts.material("steel")
+	var P := VehicleVisualParts
+	P.box(self, Vector3(1.9, 0.6, 4.2), Vector3(0, 0.02, 0), paint_mat)          # body
+	P.box(self, Vector3(1.75, 0.8, 1.4), Vector3(0, 0.72, -1.05), paint_mat)     # cab
+	P.box(self, Vector3(1.6, 0.42, 0.06), Vector3(0, 0.85, -1.76), VehicleVisualParts.material("glass"))
+	P.box(self, Vector3(1.85, 0.95, 1.9), Vector3(0, 0.78, 0.95), rust)          # hopper
+	P.box(self, Vector3(0.3, 0.14, 0.3), Vector3(0, 1.2, -1.05), VehicleVisualParts.material("amber"))  # beacon
+	# Blade arms and the two spinning blades under the nose.
+	for x in [-0.6, 0.6]:
+		P.box(self, Vector3(0.12, 0.12, 0.6), Vector3(x, -0.1, -2.15), steel)
+		var hub := Node3D.new()
+		hub.position = Vector3(x, -0.18, -2.35)
+		add_child(hub)
+		P.cylinder(hub, 0.55, 0.05, Vector3.ZERO, Vector3.ZERO, VehicleVisualParts.material("blade"))
+		for i in 8:
+			var a := TAU * float(i) / 8.0
+			var tooth := P.box(hub, Vector3(0.14, 0.05, 0.1), Vector3(cos(a) * 0.58, 0, sin(a) * 0.58), steel)
+			tooth.rotation.y = -a
+		_spinners.append(hub)
+	for x in [-0.62, 0.62]:
+		P.box(self, Vector3(0.3, 0.14, 0.06), Vector3(x, 0.2, -2.11), VehicleVisualParts.material("headlight"))
+		P.box(self, Vector3(0.3, 0.1, 0.06), Vector3(x, 0.3, 2.11), VehicleVisualParts.material("taillight"))
+	for x in [-0.45, 0.45]:
+		P.cylinder(self, 0.15, 0.32, Vector3(x, 0.05, 2.25), Vector3(90, 0, 0), steel)
+		P.cylinder(self, 0.1, 0.04, Vector3(x, 0.05, 2.42), Vector3(90, 0, 0), VehicleVisualParts.material("soot"))
+		_nozzles.append(Vector3(x, 0.05, 2.44))
+
+
+## Neon trim along the sills and an underglow that pools on the ground, in the
+## car's accent colour (its "accent" in the vehicle file).
+func _build_neon_trim() -> void:
+	var s := vehicle.stats
+	if s == null or s.accent == "":
+		return
+	var col := Neon.hex(s.accent)
+	var hw := s.body_width * 0.5 + 0.02
+	var hl := s.body_length * 0.5 - 0.35
+	var y := -0.2
+	for x in [-hw, hw]:
+		Neon.strip(self, Vector3(x, y, -hl), Vector3(x, y, hl), col, 0.06, 3.5)
+	Neon.strip(self, Vector3(-hw + 0.3, y, hl + 0.33), Vector3(hw - 0.3, y, hl + 0.33), col, 0.05, 3.0)
+	var glow := OmniLight3D.new()
+	glow.light_color = col
+	glow.light_energy = 1.6
+	glow.omni_range = maxf(s.body_length * 0.85, 3.0)
+	glow.omni_attenuation = 1.4
+	glow.position = Vector3(0, -0.45, 0)
+	glow.shadow_enabled = false
+	add_child(glow)
 
 
 func _build_drone() -> void:
@@ -260,7 +397,7 @@ func _build_flames() -> void:
 		fire.scale_amount_max = 1.0
 		var q := QuadMesh.new()
 		q.size = Vector2(0.55, 0.55)
-		q.material = _exhaust_puff_material()
+		q.material = VehicleVisualParts.soft_puff(true)
 		fire.mesh = q
 		fire.color_ramp = Effects._ramp([Color(1, 0.8, 0.4, 0.9), Color(1, 0.38, 0.06, 0.6), Color(0.35, 0.12, 0.04, 0.25), Color(0.1, 0.08, 0.06, 0)])
 		add_child(fire)
@@ -287,28 +424,6 @@ func _flame_cone(pivot: Node3D, radius: float, length: float, mat: Material) -> 
 	mi.position = Vector3(0, length * 0.5, 0)
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	pivot.add_child(mi)
-
-
-## Soft round puff for the exhaust trail: additive, tinted by the particle colour.
-static func _exhaust_puff_material() -> StandardMaterial3D:
-	var g := Gradient.new()
-	g.offsets = PackedFloat32Array([0.0, 0.45, 1.0])
-	g.colors = PackedColorArray([Color(1, 1, 1, 1), Color(1, 1, 1, 0.45), Color(1, 1, 1, 0)])
-	var tex := GradientTexture2D.new()
-	tex.gradient = g
-	tex.fill = GradientTexture2D.FILL_RADIAL
-	tex.fill_from = Vector2(0.5, 0.5)
-	tex.fill_to = Vector2(0.5, 0.0)
-	tex.width = 64
-	tex.height = 64
-	var m := StandardMaterial3D.new()
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
-	m.vertex_color_use_as_albedo = true
-	m.albedo_texture = tex
-	return m
 
 
 static func _flame_material(color: Color, energy: float) -> StandardMaterial3D:
@@ -366,3 +481,7 @@ func _build_status_shells() -> void:
 	_ghost_shell = VehicleVisualParts.box(self, Vector3(2.0, 1.2, 4.4), Vector3(0, 0.25, 0), ghost)
 	_ghost_shell.material_override = ghost
 	_ghost_shell.visible = false
+	var k: Vector3 = SHELL_SCALE.get(paint, Vector3.ONE)
+	for shell in [_shield_shell, _ice_shell, _ghost_shell]:
+		shell.scale = k
+		shell.position.y *= k.y

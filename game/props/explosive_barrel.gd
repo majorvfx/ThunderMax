@@ -35,10 +35,8 @@ func _ready() -> void:
 	m.roughness = 0.7
 	var mi := VehicleVisualParts.cylinder(self, 0.45, 1.2, Vector3.ZERO, Vector3.ZERO, m)
 	mi.name = "Drum"
-	var band := StandardMaterial3D.new()
-	band.albedo_color = Color(0.85, 0.65, 0.1)
-	band.roughness = 0.8
-	VehicleVisualParts.cylinder(self, 0.46, 0.12, Vector3(0, 0.25, 0), Vector3.ZERO, band)
+	# A glowing hazard band, so you can find the drums in the dark.
+	VehicleVisualParts.cylinder(self, 0.46, 0.12, Vector3(0, 0.25, 0), Vector3.ZERO, Neon.tube(Neon.AMBER, 2.5))
 	body_entered.connect(_on_body_entered)
 
 

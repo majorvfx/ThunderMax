@@ -1,0 +1,86 @@
+{
+  "id": "cinder",
+  "name": "Cinder",
+  "class": "light",
+  "paint": "cinder",
+  "accent": "#1ae6ff",
+  "description": "A dune buggy stripped to the roll cage and a fuel cell. Gone before you can aim. Gone after one good hit.",
+  "health": {
+    "max_health": 70
+  },
+  "drive": {
+    "max_speed": 34.0,
+    "accel": 25.0,
+    "accel_falloff": 0.5,
+    "brake_decel": 50.0,
+    "reverse_max_speed": 12.0,
+    "reverse_accel": 16.0,
+    "coast_decel": 7.0
+  },
+  "steering": {
+    "turn_rate_deg": 175.0,
+    "high_speed_turn_scale": 0.72,
+    "pivot_turn": 0.35,
+    "full_turn_speed": 4.0,
+    "steer_ramp_time": 0.13,
+    "steer_return_time": 0.07,
+    "analog_steer_curve": 1.4,
+    "yaw_response": 16.0
+  },
+  "grip": {
+    "grip": 9.0,
+    "drift_grip": 2.0,
+    "drift_min_speed": 11.0,
+    "drift_turn_boost": 1.4,
+    "drift_brake_scale": 0.25,
+    "tight_turn_boost": 1.8,
+    "tight_turn_drag": 4.5
+  },
+  "body": {
+    "mass": 950.0,
+    "body_width": 1.7,
+    "body_height": 0.7,
+    "body_length": 3.6,
+    "wheel_track": 0.8,
+    "wheel_base": 1.1,
+    "gravity_scale": 1.6,
+    "air_control": 0.35,
+    "air_upright": 3.0,
+    "upright_strength": 8.0,
+    "ride_height": 0.6,
+    "suspension_hz": 2.4,
+    "suspension_damping": 0.5
+  },
+  "combat": {
+    "ram_power": 0.7,
+    "ram_armor": 0.8
+  },
+  "turbo": {
+    "turbo_capacity": 100.0,
+    "turbo_drain": 35.0,
+    "turbo_regen": 4.0,
+    "turbo_speed_mult": 1.4,
+    "turbo_thrust": 18.0,
+    "turbo_kick": 4.0,
+    "turbo_kick_cost": 6.0,
+    "turbo_air_thrust": 16.0,
+    "turbo_air_lift": 7.0
+  },
+  "signature": {
+    "id": "ember_fan",
+    "name": "Ember Fan",
+    "kind": "volley",
+    "description": "Five little rockets in a fan. Hard to dodge, harder to survive close up.",
+    "count": 5,
+    "spread_deg": 24.0,
+    "damage": 5.0,
+    "speed": 58.0,
+    "life_s": 1.6,
+    "burn_s": 1.0,
+    "burn_dps": 4.0,
+    "curve_deg_per_s": 14.0,
+    "view_cone_deg": 25.0,
+    "recharge_s": 12.0,
+    "cooldown": 0.6
+  }
+}
