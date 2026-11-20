@@ -2,6 +2,11 @@ class_name Projectile
 extends Node3D
 ## Rockets, coolant rounds and fire jugs. Moves itself each physics step and
 ## sweeps a ray along the step, so fast shots never pass through thin walls.
+##
+## Steering toward homing_target comes in two strengths from the shot's data:
+## "turn_rate_deg" is a real homing missile (the Seeker); "curve_deg_per_s" with
+## "view_cone_deg" is a slight curve that only bends toward a target still in
+## front of the shot. A shot with neither flies dead straight (the Sledge).
 
 var kind := ""
 var owner_vehicle: ArcadeVehicle
@@ -11,6 +16,7 @@ var gravity := 0.0
 var life := 4.0
 var homing_target: Node3D = null
 var turn_rate := 0.0
+var view_cone := PI        ## only steer while the target is within this angle of the heading
 var _done := false
 var _trail: CPUParticles3D
 
@@ -20,7 +26,8 @@ func setup(projectile_kind: String, from: ArcadeVehicle, projectile_data: Dictio
 	owner_vehicle = from
 	data = projectile_data
 	life = float(data.get("life_s", 4.0))
-	turn_rate = deg_to_rad(float(data.get("turn_rate_deg", 0.0)))
+	turn_rate = deg_to_rad(float(data.get("turn_rate_deg", data.get("curve_deg_per_s", 0.0))))
+	view_cone = deg_to_rad(float(data.get("view_cone_deg", 180.0)))
 
 
 func launch(at: Vector3, vel: Vector3) -> void:
@@ -94,7 +101,7 @@ func _physics_process(delta: float) -> void:
 			var speed := velocity.length()
 			var cur := velocity.normalized()
 			var angle := cur.angle_to(want)
-			if angle > 0.0001:
+			if angle > 0.0001 and angle <= view_cone:
 				var step := minf(1.0, turn_rate * delta / angle)
 				velocity = cur.slerp(want, step).normalized() * speed
 	velocity.y -= gravity * delta

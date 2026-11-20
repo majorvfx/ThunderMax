@@ -32,7 +32,9 @@
       "description": "A coolant round that seizes the target's engine and wheels.",
       "freeze_s": 2.2,
       "damage": 4.0,
-      "speed": 75.0
+      "speed": 75.0,
+      "curve_deg_per_s": 14.0,
+      "view_cone_deg": 25.0
     },
     "spring_jack": {
       "name": "Spring Jack",
