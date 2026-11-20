@@ -31,6 +31,7 @@ var camera: ChaseCamera
 var hud: Hud
 var pause_menu: PauseMenu
 var tuning: TuningPanel
+var mirror: RearMirror
 var governor: FrameGovernor
 var drones: Array[ArcadeVehicle] = []
 var wrecks := 0
@@ -97,6 +98,10 @@ func _build_ui() -> void:
 	pause_menu.restart_requested.connect(_restart)
 	pause_menu.quit_requested.connect(_quit)
 	pause_menu.settings_changed.connect(_apply_quality)
+	mirror = RearMirror.new()
+	mirror.target = player
+	_ui.add_child(mirror)
+	_ui.move_child(mirror, hud.get_index())
 	tuning = TuningPanel.new()
 	_ui.add_child(tuning)
 	hud.message("THE FOUNDRY YARD", 3.0)
@@ -115,6 +120,30 @@ func _physics_process(_delta: float) -> void:
 			car.respawn(arena.safe_spawn(_all_vehicles_except(car)))
 			if car == player:
 				camera.snap()
+
+
+func _process(delta: float) -> void:
+	for cmd in player_driver.poll_commands(delta):
+		run_command(cmd)
+
+
+## View and info commands: Menu + D-pad on the pad, or their own keys.
+func run_command(cmd: String) -> void:
+	match cmd:
+		"view_next", "view_prev":
+			hud.message("VIEW: " + camera.cycle_view(1 if cmd == "view_next" else -1), 1.2)
+		"radar":
+			hud.show_radar = not hud.show_radar
+			hud.message("RADAR " + ("ON" if hud.show_radar else "OFF"), 1.0)
+		"rear_mirror":
+			hud.message("REAR-VIEW MIRROR " + ("ON" if mirror.toggle() else "OFF"), 1.0)
+		"enemies_left":
+			var alive := drones.filter(func(d): return d.is_alive()).size()
+			hud.message("%d %s STILL RUNNING" % [alive, "DRONE" if alive == 1 else "DRONES"], 2.0)
+		"pause":
+			pause_menu.open()
+	if cmd != "pause":
+		GameAudio.play_at("ui_click", player.global_position, 0.4)
 
 
 func _unhandled_input(event: InputEvent) -> void:

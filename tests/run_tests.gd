@@ -14,6 +14,7 @@ var _pass := 0
 var _fail := 0
 var _failures: Array[String] = []
 var _measure := {}
+var _half_turn_s := 0.0
 
 
 class ScriptedDriver:
@@ -34,6 +35,7 @@ func _run() -> void:
 	_test_combat_rules()
 	_test_input()
 	_test_remap()
+	await _test_view_commands()
 	_test_combo_buffer()
 	_test_status_effects()
 	print("== Handling measurements ==")
@@ -207,26 +209,47 @@ func _test_input() -> void:
 			if ev is InputEventJoypadButton or ev is InputEventJoypadMotion:
 				has_pad = true
 		check(has_pad, "%s: accelerate is on the pad" % preset)
-	# Modern: RT accelerates. Classic: A accelerates.
+	# The four D-pad layouts, checked against the controls table Mathias sent
+	# (PlayStation buttons moved to Xbox: Cross A, Circle B, Square X, Triangle Y,
+	# L1/R1 LB/RB, L2/R2 LT/RT, Select View, Start Menu).
+	var A := "btn:%d" % JOY_BUTTON_A
+	var B := "btn:%d" % JOY_BUTTON_B
+	var X := "btn:%d" % JOY_BUTTON_X
+	var Y := "btn:%d" % JOY_BUTTON_Y
+	var LB := "btn:%d" % JOY_BUTTON_LEFT_SHOULDER
+	var RB := "btn:%d" % JOY_BUTTON_RIGHT_SHOULDER
+	var LT := "axis:%d:+" % JOY_AXIS_TRIGGER_LEFT
+	var RT := "axis:%d:+" % JOY_AXIS_TRIGGER_RIGHT
+	var expected := {
+		"standard": {"accelerate": X, "brake": B, "turbo": Y, "tight_turn": A,
+			"special_next": RB, "special_prev": LB, "fire_special": LT, "fire_gun": RT},
+		"alt1": {"accelerate": A, "brake": LT, "turbo": Y, "tight_turn": RT,
+			"special_next": RB, "special_prev": LB, "fire_special": B, "fire_gun": X},
+		"alt2": {"accelerate": A, "brake": LT, "turbo": Y, "tight_turn": RT,
+			"special_next": RB, "special_prev": LB, "fire_special": X, "fire_gun": B},
+		"shoulders": {"accelerate": RT, "brake": RB, "turbo": LB, "tight_turn": LT,
+			"special_next": Y, "special_prev": B, "fire_special": A, "fire_gun": X},
+	}
+	for preset in expected:
+		InputSetup.apply_preset(1, -1, preset, false)
+		for a in expected[preset]:
+			check(_has_code(a, expected[preset][a]), "%s: %s on %s" % [preset, a, InputBindings.describe(expected[preset][a])])
+		check(_has_code("accelerate", "btn:%d" % JOY_BUTTON_DPAD_UP), "%s: D-pad up is gas" % preset)
+		check(_has_code("brake", "btn:%d" % JOY_BUTTON_DPAD_DOWN), "%s: D-pad down is brake" % preset)
+		for dir in ["left", "right"]:
+			var code := "btn:%d" % (JOY_BUTTON_DPAD_LEFT if dir == "left" else JOY_BUTTON_DPAD_RIGHT)
+			check(_has_code("steer_" + dir, code) and _has_code("combo_" + dir, code), "%s: D-pad %s steers and enters combos" % [preset, dir])
+		check(_has_code("pause", "btn:%d" % JOY_BUTTON_BACK), "%s: View pauses" % preset)
+		check(_has_code("view_mod", "btn:%d" % JOY_BUTTON_START), "%s: Menu is the view button" % preset)
+	check(InputSetup.DEFAULT_PRESET == "standard" and InputSetup.PRESETS[0] == "standard", "Standard is the default layout")
+	check(InputSetup.resolve_preset("classic") == "standard", "the old Classic setting becomes Standard")
+	check(InputSetup.resolve_preset("junk") == "standard", "an unknown layout falls back to Standard")
+	# Modern: our own stick-and-trigger layout.
 	InputSetup.apply_preset(1, -1, "modern", false)
-	var rt := false
-	for ev in InputMap.action_get_events(InputSetup.action(1, "accelerate")):
-		if ev is InputEventJoypadMotion and ev.axis == JOY_AXIS_TRIGGER_RIGHT:
-			rt = true
-	check(rt, "modern: right trigger accelerates")
-	InputSetup.apply_preset(1, -1, "classic", false)
-	var a_btn := false
-	for ev in InputMap.action_get_events(InputSetup.action(1, "accelerate")):
-		if ev is InputEventJoypadButton and ev.button_index == JOY_BUTTON_A:
-			a_btn = true
-	check(a_btn, "classic: A accelerates")
-	check(InputSetup.DEFAULT_PRESET == "classic" and InputSetup.PRESETS[0] == "classic", "the D-pad layout is the default")
-	for dir in ["left", "right"]:
-		var code := "btn:%d" % (JOY_BUTTON_DPAD_LEFT if dir == "left" else JOY_BUTTON_DPAD_RIGHT)
-		check(_has_code("steer_" + dir, code) and _has_code("combo_" + dir, code), "classic: D-pad %s steers and enters combos" % dir)
+	check(_has_code("accelerate", RT) and _has_code("brake", LT) and _has_code("tight_turn", B), "modern: RT gas, LT brake, B tight turn")
 	for preset in InputSetup.PRESETS:
 		InputSetup.apply_preset(1, -1, preset, true)
-		check(_has_code("combo_hold", "axis:%d:+" % JOY_AXIS_TRIGGER_RIGHT), "%s: RT is the combo hold" % preset)
+		check(_has_code("combo_hold", RT), "%s: RT is the combo hold" % preset)
 	InputSetup.apply_preset(1, -1, "modern", true)
 
 
@@ -263,8 +286,8 @@ func _test_remap() -> void:
 	check(_has_code("fire_gun", "key:%d" % KEY_SPACE), "remap: pad remap leaves keyboard alone")
 
 	# Pad remaps are per layout.
-	_apply_with_remaps("classic")
-	check(_has_code("fire_gun", "btn:%d" % JOY_BUTTON_B), "remap: classic layout is untouched")
+	_apply_with_remaps("standard")
+	check(_has_code("fire_gun", "axis:%d:+" % JOY_AXIS_TRIGGER_RIGHT), "remap: standard layout is untouched")
 
 	# Keyboard remap with swap: accelerate main key to Space (the gun's key).
 	_apply_with_remaps("modern")
@@ -299,6 +322,43 @@ func _test_remap() -> void:
 	check(not InputBindings.has_overrides("modern"), "remap: nothing left after reset")
 
 	InputBindings.overrides = saved
+	InputSetup.apply_preset(1, -1, "modern", true)
+
+
+## Simulated presses register as "just pressed" on the next rendered frame, which is
+## when the match polls these commands too.
+func _poll_after(pd: PlayerDriver) -> Array[String]:
+	await process_frame
+	return pd.poll_commands(1.0 / 60.0)
+
+
+func _test_view_commands() -> void:
+	InputSetup.apply_preset(1, -1, "standard", true)
+	var pd := PlayerDriver.new(1, -1)
+	var mod := InputSetup.action(1, "view_mod")
+	var up := InputSetup.action(1, "combo_up")
+	await _poll_after(pd)   # first poll only records what's held
+	Input.action_press(mod)
+	await _poll_after(pd)
+	Input.action_press(up)
+	var out: Array[String] = await _poll_after(pd)
+	check(out == ["view_next"], "Menu + D-pad up changes the view (got %s)" % str(out))
+	var f := pd.get_frame(null, 1.0 / 60.0)
+	check(f.combo_presses.is_empty(), "D-pad presses with Menu held aren't combo presses")
+	Input.action_release(up)
+	Input.action_release(mod)
+	out = await _poll_after(pd)
+	check(not ("pause" in out), "releasing Menu after a view command doesn't pause")
+	Input.action_press(mod)
+	await _poll_after(pd)
+	Input.action_release(mod)
+	out = await _poll_after(pd)
+	check(out == ["pause"], "tapping Menu on its own pauses (got %s)" % str(out))
+	Input.action_press(InputSetup.action(1, "radar"))
+	out = await _poll_after(pd)
+	Input.action_release(InputSetup.action(1, "radar"))
+	check(out == ["radar"], "the radar key toggles the radar (got %s)" % str(out))
+	await process_frame
 	InputSetup.apply_preset(1, -1, "modern", true)
 
 
@@ -491,6 +551,8 @@ func _handling_measurements() -> void:
 	# 3. Turning circles at half and full throttle (stick at full lock).
 	_measure["turn_circle_half_speed_m"] = await _turn_circle(0.5)
 	_measure["turn_circle_top_speed_m"] = await _turn_circle(1.0)
+	_measure["tight_turn_circle_top_speed_m"] = await _turn_circle(1.0, true)
+	_measure["tight_turn_180_from_top_speed_s"] = _half_turn_s
 
 	# 4. Digital steering: time to full lock on the D-pad.
 	world = _make_pad()
@@ -586,6 +648,8 @@ func _handling_measurements() -> void:
 		else:
 			check(got == want, "handling %s = %s, target %s" % [key, str(got), str(want)])
 	check(_measure["upright_after_landing"], "lands the kicker jump on its wheels")
+	check(float(_measure["tight_turn_circle_top_speed_m"]) < float(_measure["turn_circle_top_speed_m"]) * 0.8,
+		"the tight turn button turns much tighter at top speed")
 	check(float(_measure["ram_damage_to_parked"]) > 0.0, "a top-speed T-bone damages the parked car")
 	for k in _measure.keys():
 		print("  %-30s %s" % [k, _fmt(_measure[k])])
@@ -597,7 +661,7 @@ func _spawn_settled(world: Node3D, at: Vector3, yaw: float = 0.0) -> Array:
 	return pair
 
 
-func _turn_circle(throttle: float) -> float:
+func _turn_circle(throttle: float, tight: bool = false) -> float:
 	var world := _make_pad()
 	var pair := await _spawn_settled(world, Vector3(0, 1.0, 0))
 	var v: ArcadeVehicle = pair[0]
@@ -606,16 +670,20 @@ func _turn_circle(throttle: float) -> float:
 	await _frames(240)
 	drv.frame.steer = 1.0
 	drv.frame.steer_digital = false
-	await _frames(240)
+	drv.frame.tight_turn = tight
+	await _frames(240 if not tight else 30)
 	var pts: Array[Vector3] = []
 	var yaw_total := 0.0
 	var last_fwd := _flat(-v.global_transform.basis.z).normalized()
 	var guard := 0
+	_half_turn_s = 0.0
 	while yaw_total < TAU and guard < 2000:
 		await physics_frame
 		guard += 1
 		var f := _flat(-v.global_transform.basis.z).normalized()
 		yaw_total += absf(last_fwd.signed_angle_to(f, Vector3.UP))
+		if _half_turn_s == 0.0 and yaw_total >= PI:
+			_half_turn_s = guard / 60.0
 		last_fwd = f
 		pts.append(_flat(v.global_position))
 	var diameter := 0.0

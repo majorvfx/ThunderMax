@@ -27,6 +27,7 @@ func _ready() -> void:
 	shape.shape = s
 	add_child(shape)
 	_build_visual()
+	add_to_group("pickups")
 	_base_y = _visual.position.y
 	_time = randf() * TAU
 	body_entered.connect(_on_body_entered)

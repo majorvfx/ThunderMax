@@ -56,10 +56,10 @@ func _ready() -> void:
 	_help = GridContainer.new()
 	_help.columns = 3
 	_help.add_theme_constant_override("h_separation", 18)
-	_help.add_theme_constant_override("v_separation", 4)
+	_help.add_theme_constant_override("v_separation", 0)
 	row.add_child(_help)
 	_moves = VBoxContainer.new()
-	_moves.add_theme_constant_override("separation", 4)
+	_moves.add_theme_constant_override("separation", 0)
 	row.add_child(_moves)
 	_remap = RemapScreen.new()
 	add_child(_remap)
@@ -93,7 +93,8 @@ func _resume() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not visible or _remap.visible:
 		return
-	if event.is_action_pressed("ui_cancel") or event.is_action_pressed(InputSetup.action(1, "pause")):
+	if event.is_action_pressed("ui_cancel") or event.is_action_pressed(InputSetup.action(1, "pause")) \
+			or event.is_action_pressed(InputSetup.action(1, "view_mod")):
 		get_viewport().set_input_as_handled()
 		_resume()
 
@@ -131,10 +132,11 @@ func _refresh() -> void:
 	_help.add_child(UiStyle.label("", 16))
 	_help.add_child(UiStyle.label("CONTROLLER", 16, accent))
 	_help.add_child(UiStyle.label("KEYBOARD", 16, accent))
+	# Compact rows so every control fits on a 720p screen.
 	for a in InputBindings.LABELS:
-		_help.add_child(UiStyle.label(InputBindings.LABELS[a], 16))
-		_help.add_child(UiStyle.label(InputBindings.pad_text(1, a), 16))
-		_help.add_child(UiStyle.label(InputBindings.key_text(1, a), 16, Color(0.7, 0.66, 0.6)))
+		_help.add_child(UiStyle.label(InputBindings.LABELS[a], 14))
+		_help.add_child(UiStyle.label(InputBindings.pad_text(1, a), 14))
+		_help.add_child(UiStyle.label(InputBindings.key_text(1, a), 14, Color(0.7, 0.66, 0.6)))
 
 
 ## Combo move list from data/combos.json. Inputs are written as words because

@@ -90,6 +90,19 @@ func _run() -> void:
 	await _sim(0.8)
 	_save("blackout")
 	m.player.status.reset()
+	# Menu + D-pad left / right: radar and rear-view mirror.
+	m.run_command("radar")
+	m.run_command("rear_mirror")
+	await _sim(0.6)
+	_save("radar_mirror")
+	m.run_command("radar")
+	m.run_command("rear_mirror")
+	# Menu + D-pad up twice: hood view.
+	m.run_command("view_next")
+	m.run_command("view_next")
+	await _sim(0.4)
+	_save("hood_view")
+	m.camera.cycle_view(1)
 	# Kicker jump in the east lane.
 	m.player.global_transform = Transform3D(Basis.IDENTITY, Vector3(68, 1.2, 75))
 	m.player.reset_physics_interpolation()

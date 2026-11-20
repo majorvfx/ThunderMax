@@ -13,6 +13,14 @@ var follow_sharpness := 7.0
 var base_fov := 70.0
 var speed_fov := 12.0
 
+## Camera views: [name, distance, height, look height]. "Hood" sits on the roof.
+const VIEWS := [
+	["CHASE", 7.5, 3.0, 1.1],
+	["FAR CHASE", 11.0, 4.6, 1.3],
+	["HOOD", 0.0, 1.55, 1.45],
+]
+var view := 0
+
 var _yaw := 0.0
 var _shake := 0.0
 var _initialised := false
@@ -26,6 +34,20 @@ func _ready() -> void:
 
 func snap() -> void:
 	_initialised = false
+
+
+## Steps through the camera views. Returns the new view's name.
+func cycle_view(step: int) -> String:
+	view = (view + step + VIEWS.size()) % VIEWS.size()
+	distance = VIEWS[view][1]
+	height = VIEWS[view][2]
+	look_height = VIEWS[view][3]
+	_initialised = false
+	return VIEWS[view][0]
+
+
+func is_hood_view() -> bool:
+	return distance < 0.5
 
 
 func _process(delta: float) -> void:
@@ -49,13 +71,20 @@ func _process(delta: float) -> void:
 	var back := Vector3(sin(_yaw), 0.0, cos(_yaw))
 	var focus := xf.origin + Vector3.UP * look_height
 	var desired := focus + back * distance + Vector3.UP * (height - look_height)
+	if is_hood_view():
+		# On the roof, a little forward of centre (or rearward when looking back).
+		_yaw = car_yaw
+		back = Vector3(sin(_yaw), 0.0, cos(_yaw))
+		desired = xf.origin + xf.basis.y * height - back * 0.6
+		focus = desired - back * 20.0 + Vector3.DOWN * 1.5
 
 	# Keep the camera on the car's side of walls.
-	var q := PhysicsRayQueryParameters3D.create(focus, desired, ArcadeVehicle.LAYER_WORLD)
-	var hit := get_world_3d().direct_space_state.intersect_ray(q)
-	if not hit.is_empty():
-		var hp: Vector3 = hit["position"]
-		desired = hp + (focus - hp).normalized() * 0.4
+	if not is_hood_view():
+		var q := PhysicsRayQueryParameters3D.create(focus, desired, ArcadeVehicle.LAYER_WORLD)
+		var hit := get_world_3d().direct_space_state.intersect_ray(q)
+		if not hit.is_empty():
+			var hp: Vector3 = hit["position"]
+			desired = hp + (focus - hp).normalized() * 0.4
 
 	if target.last_impact > 0.0:
 		_shake = clampf(target.last_impact / 30.0, 0.0, 0.6)
@@ -64,6 +93,6 @@ func _process(delta: float) -> void:
 	var shake := Vector3(randf_range(-1, 1), randf_range(-1, 1), 0.0) * _shake * 0.3
 
 	global_position = desired + shake
-	look_at(focus - back * look_ahead, Vector3.UP)
+	look_at(focus - back * (0.0 if is_hood_view() else look_ahead), Vector3.UP)
 	var boost := 0.4 if target.drive.boosting else 0.0
 	fov = lerpf(fov, base_fov + speed_fov * clampf(target.speed_fraction() + boost, 0.0, 1.4), 1.0 - exp(-4.0 * delta))

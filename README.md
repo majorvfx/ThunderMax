@@ -26,33 +26,57 @@ weapon crates, set off the fuel drums.
 
 ## Controls
 
-Two pad layouts; switch between them in the pause menu. Your choice is saved. **Classic** is
-the default: the D-pad steers and also enters the combo moves.
-Every action can also be remapped (see **Remapping** below); the table shows the defaults.
+Five pad layouts; switch between them in the pause menu (**Controls**). Your choice is saved.
+**Standard** is the default. The first four are the classic 1990s arcade-combat pad layouts,
+moved to the Xbox pad button for button (Cross = A, Circle = B, Square = X, Triangle = Y,
+L1/R1 = LB/RB, L2/R2 = LT/RT, Select = View, Start = Menu). In those four **the D-pad drives**
+(up is gas, down is brake, left and right steer) **and enters the combo moves**. Every action
+can also be remapped (see **Remapping** below); the tables show the defaults.
 
-| Action | Classic (default) | Modern | Keyboard |
-| --- | --- | --- | --- |
-| Accelerate | A | RT | W / Up |
-| Brake, then reverse | X | LT | S / Down |
-| Steer | D-pad or left stick | Left stick | A, D / Left, Right |
-| Machine gun | B | RB | Space |
-| Special weapon | Y | X | F |
-| Turbo | LT | A | Shift |
-| Look back | RT | B | C |
-| Previous / next special | LB / RB | LB / Y | Q / E |
-| Combo moves | D-pad | D-pad | I, K, J, L (up, down, left, right) |
-| Combo hold (for held moves) | RT | RT | Ctrl |
-| Pause | Menu | Menu | Esc |
-| Handling tuning panel | View | View | F1 |
-| Debug readout | | | F3 |
-| Fullscreen | | | F11 |
+| Action | Standard (default) | Alternate 1 | Alternate 2 | Shoulders |
+| --- | --- | --- | --- | --- |
+| Gas | X / D-pad up | A / D-pad up | A / D-pad up | RT / D-pad up |
+| Brake, then reverse | B / D-pad down | LT / D-pad down | LT / D-pad down | RB / D-pad down |
+| Steer | D-pad left / right (or left stick) | same | same | same |
+| Turbo | Y | Y | Y | LB |
+| Tight turn | A | RT | RT | LT |
+| Next special | RB | RB | RB | Y |
+| Previous special | LB | LB | LB | B |
+| Fire special | LT | B | X | A |
+| Machine guns | RT | X | B | X |
+| Combo moves | D-pad | D-pad | D-pad | D-pad |
+| Combo hold (for held moves) | RT | RT | RT | RT |
+| Pause | View (or tap Menu) | same | same | same |
+| Change view (chase, far chase, hood) | Menu + D-pad up / down | same | same | same |
+| Radar | Menu + D-pad left | same | same | same |
+| Rear-view mirror | Menu + D-pad right | same | same | same |
+| Enemies left | Menu + A | same | same | same |
+| Look back | Right stick click | same | same | same |
+| Handling tuning panel | Left stick click | same | same | same |
 
-**Classic** puts the driving on the face buttons the way 1990s pads did, and D-pad steering
-ramps in over a fraction of a second instead of snapping to full lock. The left stick steers
-too. **Modern** uses the analog triggers for throttle and brake and the stick for steering.
+**Modern** is our own stick-and-trigger layout: RT gas, LT brake, left stick steers, A turbo,
+B tight turn, RB machine guns, X special, LB / Y previous / next special, right stick click look
+back, Menu pause, and View held with the D-pad for views, radar and mirror. The D-pad is for
+combos only.
 
-**Power slide:** hold brake and steer at speed. A dedicated drift control is planned for a
-later milestone.
+| Action | Keyboard |
+| --- | --- |
+| Gas / brake / steer | W, S, A, D (or the arrow keys) |
+| Tight turn | X |
+| Machine guns / fire special | Space / F |
+| Previous / next special | Q / E |
+| Turbo / look back | Shift / C |
+| Combo moves / combo hold | I, K, J, L (up, down, left, right) / Ctrl |
+| Change view / radar / mirror / enemies left | V / R / M / Tab |
+| Pause / tuning panel / debug readout / fullscreen | Esc / F1 / F3 / F11 |
+
+D-pad steering ramps in over a fraction of a second instead of snapping to full lock, and the
+left stick also steers in every layout. While Menu is held, D-pad presses are view controls,
+not combo presses (they still nudge the gas, brake or steering).
+
+**Tight turn** swings the car round hard: hold it and steer. At full speed it whips you round
+180 degrees in under a second, scrubbing off speed as it goes, so you can face whoever is
+chasing you. **Power slide:** hold brake and steer at speed for a longer, looser drift.
 
 ### Combo moves
 
@@ -79,8 +103,10 @@ accelerating while you use them.
 
 A frozen car can't drive, fire specials or use combos. The combo directions and the hold are
 their own actions (Combo up/down/left/right, Combo hold), so they can be remapped like
-everything else. In the Classic layout the D-pad also steers; only the exact sequences above
-fire a move, and every one has an Up or Down in it, so steering taps alone never fire one.
+everything else. In the D-pad layouts the same presses also drive (an Up in a code is a quick
+tap of gas); only the exact sequences above fire a move, and every one has an Up or Down in it,
+so steering taps alone never fire one. In Standard, RT is also the machine guns, so the guns
+fire while you hold it for Rivet Storm.
 
 Names, inputs, costs and effects all live in `data/combos.json`, so new moves can be added
 there.
@@ -106,7 +132,7 @@ Pause, then choose **Remap controls**. Every action has a controller column and 
 columns (main and alt key). Pick a cell with the D-pad or mouse, press **A** / **Enter**, then
 press the new button, trigger, stick direction or key. If another action already used it, the two
 swap, so nothing is ever left doubled up. **Backspace** clears a key; **Esc**, or waiting five
-seconds, cancels. Controller remaps are kept separately for Modern and Classic, and keyboard
+seconds, cancels. Controller remaps are kept separately for each layout, and keyboard
 remaps apply to both. **Reset to defaults** (press twice) restores the current layout and the
 keyboard. Everything is saved to `user://settings.cfg` straight away.
 

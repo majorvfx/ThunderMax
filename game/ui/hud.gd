@@ -9,6 +9,7 @@ var gun: MachineGun
 var camera: Camera3D
 var governor: FrameGovernor
 var wrecks := 0
+var show_radar := false
 var show_debug := false
 var hint_time := 12.0
 
@@ -103,6 +104,9 @@ func _draw() -> void:
 		var col := Color(1.0, 0.35, 0.2, a) if _move_bad else Color(C_TURBO, a)
 		draw_string(_font, Vector2(0, s.y * 0.36), _move_text, HORIZONTAL_ALIGNMENT_CENTER, s.x, big, col)
 
+	if show_radar:
+		_draw_radar(Vector2(s.x - pad - 80 * scale_ui, pad + 150 * scale_ui), 70.0 * scale_ui)
+
 	# Wrecks, top right.
 	var wtxt := "WRECKS  %d" % wrecks
 	draw_string(_font, Vector2(s.x - pad - 220 * scale_ui, pad + 30 * scale_ui), wtxt, HORIZONTAL_ALIGNMENT_RIGHT, 220 * scale_ui, big - 8, C_TEXT)
@@ -139,9 +143,9 @@ func _draw() -> void:
 	# Controls hint at the start.
 	if hint_time > 0.0:
 		var alpha := clampf(hint_time, 0.0, 1.0)
-		var hint := "%s controls  -  %s: pause  -  %s: tuning panel" % [
+		var hint := "%s controls  -  %s: pause  -  hold %s + D-pad: views, radar, mirror" % [
 			InputSetup.PRESET_NAMES.get(GameSettings.control_preset, ""),
-			InputBindings.pad_text(1, "pause"), InputBindings.pad_text(1, "tuning")]
+			InputBindings.pad_text(1, "pause"), InputBindings.pad_text(1, "view_mod")]
 		draw_string(_font, Vector2(0, s.y - pad - 8 * scale_ui), hint, HORIZONTAL_ALIGNMENT_CENTER, s.x, fs - 4, Color(C_DIM, alpha))
 
 	if show_debug:
@@ -209,6 +213,39 @@ func _draw_combo_trail(center: Vector2, scale_ui: float) -> void:
 		var side := Vector2(-dir.y, dir.x)
 		var pts := PackedVector2Array([c + dir * r, c - dir * r * 0.6 + side * r * 0.8, c - dir * r * 0.6 - side * r * 0.8])
 		draw_colored_polygon(pts, C_ENERGY)
+
+
+## Top-down radar, your heading up. Drones are red (hidden under Blackout), live
+## pickups are pale dots. Range 90 m; anything further sits on the rim.
+func _draw_radar(center: Vector2, r: float) -> void:
+	draw_circle(center, r, C_PANEL)
+	draw_arc(center, r, 0.0, TAU, 48, C_EDGE, 2.0)
+	draw_arc(center, r * 0.5, 0.0, TAU, 32, Color(C_EDGE, 0.35), 1.0)
+	var xf := vehicle.global_transform
+	var fwd := -xf.basis.z
+	fwd.y = 0.0
+	if fwd.length_squared() < 0.001:
+		return
+	fwd = fwd.normalized()
+	var right := Vector3(-fwd.z, 0.0, fwd.x)
+	var range_m := 90.0
+	var blip := func(world: Vector3, col: Color, size: float) -> void:
+		var d := world - xf.origin
+		var p := Vector2(d.dot(right), -d.dot(fwd)) / range_m * r
+		if p.length() > r - 4.0:
+			p = p.normalized() * (r - 4.0)
+		draw_circle(center + p, size, col)
+	for n in get_tree().get_nodes_in_group("pickups"):
+		if n is Node3D and n.has_method("is_active") and n.is_active():
+			blip.call((n as Node3D).global_position, Color(0.9, 0.85, 0.7, 0.8), 2.5)
+	for n in get_tree().get_nodes_in_group("vehicles"):
+		var v := n as ArcadeVehicle
+		if v == null or v == vehicle or not v.is_alive() or v.status.is_cloaked():
+			continue
+		blip.call(v.global_position, Color(1.0, 0.3, 0.15), 4.0)
+	# You: an arrow pointing up.
+	var tip := center + Vector2(0, -7)
+	draw_colored_polygon(PackedVector2Array([tip, center + Vector2(-5, 6), center + Vector2(5, 6)]), C_TURBO)
 
 
 func _bar(pos: Vector2, w: float, h: float, frac: float, col: Color, label: String, fs: int) -> void:

@@ -42,6 +42,8 @@ measurements and tuning sessions, so the handling stays ours.
 | `grip` | stay more planted | slide more |
 | `drift_grip` | make power slides tighter | make power slides longer and looser |
 | `drift_turn_boost` | rotate faster in a power slide | rotate slower in a power slide |
+| `tight_turn_boost` | swing round harder on the tight turn button | gentler tight turns |
+| `tight_turn_drag` | tight turns scrub off more speed | tight turns keep more speed |
 | `gravity_scale` | shorter, punchier jumps | floatier jumps |
 | `air_control` | steer more in the air | steer less in the air |
 | `upright_strength` | resist tipping harder | allow more body roll |
