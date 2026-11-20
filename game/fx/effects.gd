@@ -141,3 +141,38 @@ static func tracer(parent: Node, from: Vector3, to: Vector3) -> void:
 	var up := Vector3.UP if absf(dir.y) < 0.99 else Vector3.FORWARD
 	mi.global_transform = Transform3D(Basis.looking_at(dir, up), mid)
 	parent.get_tree().create_timer(0.05, false).timeout.connect(mi.queue_free)
+
+
+## Pale burst of frost where a Cold Snap round lands.
+static func frost_burst(parent: Node, pos: Vector3) -> void:
+	if parent == null or not parent.is_inside_tree():
+		return
+	var p := _burst(parent, pos, 18, 0.6, _particle_material("frost", Color(0.7, 0.9, 1.0), 2.0), 0.5)
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	p.emission_sphere_radius = 0.6
+	p.direction = Vector3.UP
+	p.spread = 180.0
+	p.initial_velocity_min = 2.0
+	p.initial_velocity_max = 6.0
+	p.gravity = Vector3(0, -6, 0)
+	p.color_ramp = _ramp([Color(0.9, 0.97, 1.0, 1.0), Color(0.5, 0.8, 1.0, 0.0)])
+
+
+## Black smog cloud for Blackout.
+static func smog_burst(parent: Node, pos: Vector3) -> void:
+	if parent == null or not parent.is_inside_tree():
+		return
+	var p := _burst(parent, pos + Vector3.UP * 0.6, 22, 1.4, _particle_material("smoke", Color(0.12, 0.11, 0.1), 0.0), 1.1)
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	p.emission_sphere_radius = 1.4
+	p.explosiveness = 0.85
+	p.direction = Vector3.UP
+	p.spread = 180.0
+	p.initial_velocity_min = 1.5
+	p.initial_velocity_max = 4.0
+	p.gravity = Vector3(0, 0.8, 0)
+	p.damping_min = 1.5
+	p.damping_max = 2.5
+	p.scale_amount_min = 0.6
+	p.scale_amount_max = 1.4
+	p.color_ramp = _ramp([Color(0.16, 0.15, 0.14, 0.6), Color(0.2, 0.19, 0.18, 0.35), Color(0.25, 0.24, 0.22, 0.0)])

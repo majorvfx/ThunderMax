@@ -16,6 +16,7 @@ const LABELS := {
 	"brake": "Brake / reverse",
 	"steer_left": "Steer left",
 	"steer_right": "Steer right",
+	"tight_turn": "Tight turn",
 	"fire_gun": "Machine gun",
 	"fire_special": "Special weapon",
 	"special_prev": "Previous special",
@@ -23,8 +24,18 @@ const LABELS := {
 	"turbo": "Turbo",
 	"look_back": "Look back",
 	"pause": "Pause",
+	"view_mod": "Views (hold + D-pad)",
+	"view_cycle": "Change view",
+	"radar": "Radar",
+	"rear_mirror": "Rear-view mirror",
+	"enemies_left": "Enemies left",
 	"tuning": "Tuning panel",
 	"debug": "Debug readout",
+	"combo_up": "Combo up",
+	"combo_down": "Combo down",
+	"combo_left": "Combo left",
+	"combo_right": "Combo right",
+	"combo_hold": "Combo hold",
 }
 
 const _BUTTON_NAMES := {

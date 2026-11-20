@@ -22,6 +22,16 @@ class ControlFrame:
 	var fire_gun := false
 	var fire_special := false
 	var look_back := false
+	var combo_presses: Array[String] = []  ## D-pad combo presses this step, in order
+	var combo_hold := false                ## combo hold control down (RT by default)
+	var tight_turn := false                ## tight turn: a handbrake-style slide
+	var cycle_special := 0                 ## -1 previous, +1 next, 0 none
+
+	## Copy with the driving zeroed (used while frozen).
+	func idle() -> ControlFrame:
+		var f := ControlFrame.new()
+		f.look_back = look_back
+		return f
 
 
 ## Persistent drive state for one vehicle.
@@ -46,14 +56,21 @@ static func step(s: VehicleStats, st: DriveState, c: ControlFrame, grounded: boo
 	elif not c.turbo:
 		st.turbo = minf(s.turbo_capacity, st.turbo + s.turbo_regen * dt)
 
-	# Power slide: brake + steer at speed.
-	st.drifting = grounded and c.brake > 0.5 and absf(st.steer) > 0.5 and st.speed > s.drift_min_speed
+	# Tight turn: hold the button and steer to swing the car round, sliding at speed.
+	var tight := grounded and c.tight_turn and absf(st.steer) > 0.2 and absf(st.speed) > 2.0
+	# Power slide: brake + steer at speed, or a tight turn at speed.
+	var power_slide := c.brake > 0.5 and absf(st.steer) > 0.5
+	st.drifting = grounded and (power_slide or tight) and st.speed > s.drift_min_speed
 
 	if grounded:
 		st.speed = step_forward_speed(s, st.speed, c.throttle, c.brake, st.boosting, st.drifting, dt)
+		if tight:
+			st.speed = move_toward(st.speed, 0.0, s.tight_turn_drag * dt)
 		st.lateral = step_lateral(s, st.lateral, st.drifting, dt)
 	var yaw := target_yaw_rate(s, st.speed, st.steer)
-	if st.drifting:
+	if tight:
+		yaw *= s.tight_turn_boost
+	elif st.drifting:
 		yaw *= s.drift_turn_boost
 	st.yaw_rate = yaw
 

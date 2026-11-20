@@ -14,6 +14,7 @@ var _fps_btn: Button
 var _quality_btn: Button
 var _remap_btn: Button
 var _help: GridContainer
+var _moves: VBoxContainer
 var _remap: RemapScreen
 
 
@@ -55,8 +56,11 @@ func _ready() -> void:
 	_help = GridContainer.new()
 	_help.columns = 3
 	_help.add_theme_constant_override("h_separation", 18)
-	_help.add_theme_constant_override("v_separation", 4)
+	_help.add_theme_constant_override("v_separation", 0)
 	row.add_child(_help)
+	_moves = VBoxContainer.new()
+	_moves.add_theme_constant_override("separation", 0)
+	row.add_child(_moves)
 	_remap = RemapScreen.new()
 	add_child(_remap)
 	_remap.closed.connect(_on_remap_closed)
@@ -89,7 +93,8 @@ func _resume() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not visible or _remap.visible:
 		return
-	if event.is_action_pressed("ui_cancel") or event.is_action_pressed(InputSetup.action(1, "pause")):
+	if event.is_action_pressed("ui_cancel") or event.is_action_pressed(InputSetup.action(1, "pause")) \
+			or event.is_action_pressed(InputSetup.action(1, "view_mod")):
 		get_viewport().set_input_as_handled()
 		_resume()
 
@@ -120,13 +125,47 @@ func _refresh() -> void:
 	_controls_btn.text = "Controls: %s" % InputSetup.PRESET_NAMES[GameSettings.control_preset]
 	_fps_btn.text = "Frame rate: %s" % (governor.label() if governor else GameSettings.fps_mode)
 	_quality_btn.text = "Graphics: %s" % GameSettings.quality.capitalize()
+	_build_move_list()
 	for c in _help.get_children():
 		c.queue_free()
 	var accent := Color(0.95, 0.6, 0.2)
 	_help.add_child(UiStyle.label("", 16))
 	_help.add_child(UiStyle.label("CONTROLLER", 16, accent))
 	_help.add_child(UiStyle.label("KEYBOARD", 16, accent))
+	# Compact rows so every control fits on a 720p screen.
 	for a in InputBindings.LABELS:
-		_help.add_child(UiStyle.label(InputBindings.LABELS[a], 16))
-		_help.add_child(UiStyle.label(InputBindings.pad_text(1, a), 16))
-		_help.add_child(UiStyle.label(InputBindings.key_text(1, a), 16, Color(0.7, 0.66, 0.6)))
+		_help.add_child(UiStyle.label(InputBindings.LABELS[a], 14))
+		_help.add_child(UiStyle.label(InputBindings.pad_text(1, a), 14))
+		_help.add_child(UiStyle.label(InputBindings.key_text(1, a), 14, Color(0.7, 0.66, 0.6)))
+
+
+## Combo move list from data/combos.json. Inputs are written as words because
+## the placeholder font has no arrow glyphs. Long codes wrap after four presses.
+func _build_move_list() -> void:
+	for c in _moves.get_children():
+		c.queue_free()
+	var accent := Color(0.95, 0.6, 0.2)
+	var dim := Color(0.7, 0.66, 0.6)
+	_moves.add_child(UiStyle.label("COMBO MOVES", 16, accent))
+	_moves.add_child(UiStyle.label("Tap the combo directions quickly", 14, dim))
+	var data: Variant = GameData.load_json(GameData.COMBOS_PATH)
+	if typeof(data) != TYPE_DICTIONARY:
+		return
+	var hold_name := InputBindings.pad_text(1, "combo_hold")
+	var moves: Dictionary = data.get("moves", {})
+	for id in moves:
+		var m: Dictionary = moves[id]
+		var cost := "%d energy" % int(m.get("cost", 0))
+		if bool(m.get("uses_special", false)):
+			cost = "a special shot, or %s" % cost
+		_moves.add_child(UiStyle.label("%s  (%s)" % [m.get("name", id), cost], 15))
+		var words := []
+		for d in m.get("inputs", []):
+			words.append(str(d).capitalize())
+		var lines := []
+		for i in range(0, words.size(), 4):
+			lines.append(", ".join(words.slice(i, i + 4)))
+		if bool(m.get("hold", false)):
+			lines.push_front("Hold %s, then" % hold_name)
+		for line in lines:
+			_moves.add_child(UiStyle.label("   " + line, 14, dim))

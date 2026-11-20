@@ -32,6 +32,18 @@ static func create(vehicle_id: String, driver: RefCounted, is_player: bool, with
 	v.add_child(gun)
 	gun.setup(v, GameData.weapon("machine_gun"))
 
+	var combos := ComboController.new()
+	combos.name = "Combos"
+	v.add_child(combos)
+	combos.setup(v)
+	v.combos = combos
+
+	var specials := SpecialWeapons.new()
+	specials.name = "Specials"
+	v.add_child(specials)
+	specials.setup(v)
+	v.specials = specials
+
 	if with_visual:
 		var engine := EngineSound.new()
 		engine.name = "EngineSound"

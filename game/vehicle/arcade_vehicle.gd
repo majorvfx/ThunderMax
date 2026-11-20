@@ -10,6 +10,7 @@ extends RigidBody3D
 signal wrecked(vehicle: ArcadeVehicle, killer: Node)
 signal damaged(vehicle: ArcadeVehicle, amount: float, source: Node)
 signal pickup_taken(vehicle: ArcadeVehicle, kind: String)
+signal shield_blocked(vehicle: ArcadeVehicle, amount: float)
 
 const LAYER_WORLD := 1
 const LAYER_VEHICLES := 2
@@ -27,6 +28,9 @@ var driver: RefCounted   ## anything with get_frame(vehicle, dt) -> ControlFrame
 var team := 0
 var is_player := false
 var frame := ArcadeHandling.ControlFrame.new()
+var status := StatusEffects.new()
+var combos: ComboController
+var specials: SpecialWeapons
 
 var grounded := false
 var ground_normal := Vector3.UP
@@ -53,6 +57,9 @@ func setup(vehicle_stats: VehicleStats, vehicle_driver: RefCounted, player: bool
 	health = CombatRules.Health.new(stats.max_health)
 	drive = ArcadeHandling.DriveState.new()
 	drive.turbo = stats.turbo_capacity
+	var combo_data: Variant = GameData.load_json(GameData.COMBOS_PATH)
+	if typeof(combo_data) == TYPE_DICTIONARY:
+		status.configure(float(combo_data.get("energy_max", 100.0)), float(combo_data.get("energy_regen", 6.0)))
 	apply_stats()
 
 
@@ -99,6 +106,7 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 
 	if driver != null:
 		frame = driver.get_frame(self, dt)
+	var drive_frame := frame.idle() if status.is_frozen() else frame
 
 	_impact_cooldown = maxf(0.0, _impact_cooldown - dt)
 	_detect_impacts(state, up)
@@ -119,7 +127,7 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	drive.lateral = v.dot(right)
 	var along_normal := v.dot(n)
 
-	ArcadeHandling.step(stats, drive, frame, grounded, dt)
+	ArcadeHandling.step(stats, drive, drive_frame, grounded, dt)
 
 	if grounded:
 		v = fwd * drive.speed + right * drive.lateral + n * along_normal
@@ -231,8 +239,19 @@ func _play_impact(volume: float) -> void:
 	GameAudio.play_at("impact", global_position, volume)
 
 
+func _physics_process(delta: float) -> void:
+	if not _alive or stats == null:
+		return
+	var burn := status.tick(delta)
+	if burn > 0.0:
+		take_damage(burn, status.burn_source as Node)
+
+
 func take_damage(amount: float, source: Node) -> void:
 	if not _alive:
+		return
+	if status.is_shielded():
+		shield_blocked.emit(self, amount)
 		return
 	var taken := health.damage(amount)
 	if taken <= 0.0:
@@ -247,7 +266,11 @@ func take_damage(amount: float, source: Node) -> void:
 func apply_pickup(kind: String, amount: float) -> bool:
 	if not _alive:
 		return false
-	var used := CombatRules.apply_pickup(kind, amount, health, drive, stats.turbo_capacity)
+	var used := false
+	if kind == "weapon":
+		used = specials != null and specials.add_random(int(amount))
+	else:
+		used = CombatRules.apply_pickup(kind, amount, health, drive, stats.turbo_capacity)
 	if used:
 		pickup_taken.emit(self, kind)
 	return used
@@ -267,6 +290,9 @@ func _wreck(killer: Node) -> void:
 ## Puts the vehicle back in play at a spawn point with full health.
 func respawn(at: Transform3D) -> void:
 	health.reset()
+	status.reset()
+	if specials != null:
+		specials.clear()
 	drive = ArcadeHandling.DriveState.new()
 	drive.turbo = stats.turbo_capacity
 	last_attacker = null

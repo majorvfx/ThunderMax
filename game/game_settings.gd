@@ -9,10 +9,11 @@ extends RefCounted
 const PATH := "user://settings.cfg"
 const FPS_MODES := ["auto", "30", "60"]
 const QUALITIES := ["low", "medium", "high"]
+const LAYOUT_VERSION := 2
 
 static var fps_mode := "auto"
 static var quality := "medium"
-static var control_preset := "modern"
+static var control_preset := InputSetup.DEFAULT_PRESET
 static var sfx_volume := 1.0
 static var music_volume := 0.7
 static var _loaded := false
@@ -30,6 +31,9 @@ static func load_settings() -> void:
 	fps_mode = str(cfg.get_value("display", "fps_mode", fps_mode))
 	quality = str(cfg.get_value("display", "quality", quality))
 	control_preset = str(cfg.get_value("controls", "preset", control_preset))
+	# Settings saved before the D-pad Standard layout became the default move to it once.
+	if int(cfg.get_value("controls", "layout_version", 1)) < LAYOUT_VERSION:
+		control_preset = InputSetup.DEFAULT_PRESET
 	sfx_volume = float(cfg.get_value("audio", "sfx", sfx_volume))
 	music_volume = float(cfg.get_value("audio", "music", music_volume))
 	InputBindings.load_from(cfg)
@@ -37,8 +41,7 @@ static func load_settings() -> void:
 		fps_mode = "auto"
 	if not QUALITIES.has(quality):
 		quality = "medium"
-	if not InputSetup.PRESETS.has(control_preset):
-		control_preset = "modern"
+	control_preset = InputSetup.resolve_preset(control_preset)
 
 
 static func save_settings() -> void:
@@ -46,6 +49,7 @@ static func save_settings() -> void:
 	cfg.set_value("display", "fps_mode", fps_mode)
 	cfg.set_value("display", "quality", quality)
 	cfg.set_value("controls", "preset", control_preset)
+	cfg.set_value("controls", "layout_version", LAYOUT_VERSION)
 	cfg.set_value("audio", "sfx", sfx_volume)
 	cfg.set_value("audio", "music", music_volume)
 	InputBindings.save_to(cfg)
