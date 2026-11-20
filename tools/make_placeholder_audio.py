@@ -115,6 +115,81 @@ def ui_click():
     return np.sin(2 * np.pi * 900 * t) * env(n, 0.001, 4.0) + lowpass(rng.normal(0, 1, n), 2500) * env(n, 0.0, 6.0) * 0.5
 
 
+def shield():
+    # Metal shutters slamming plus a rising electric hum.
+    n = int(0.7 * RATE)
+    t = t_axis(0.7)
+    slam = lowpass(rng.normal(0, 1, n), 1500) * env(n, 0.001, 5.0) * 1.5
+    hum = (saw(110 + 80 * t, t) * 0.4 + np.sin(2 * np.pi * 220 * t) * 0.3) * env(n, 0.05, 1.2)
+    return slam + lowpass(hum, 2500)
+
+
+def jump():
+    # Hydraulic thump and hiss.
+    n = int(0.45 * RATE)
+    t = t_axis(0.45)
+    thump = np.sin(2 * np.pi * (90 - 60 * t) * t) * env(n, 0.002, 3.0)
+    hiss = lowpass(rng.normal(0, 1, n), 5000) * env(n, 0.01, 2.0) * 0.4
+    return thump + hiss
+
+
+def launch():
+    # Rocket ignition whoosh.
+    n = int(0.6 * RATE)
+    noise = rng.normal(0, 1, n)
+    body = lowpass(noise, 2200) * env(n, 0.01, 1.5)
+    t = t_axis(0.6)
+    tone = saw(140 + 300 * t, t) * env(n, 0.005, 2.0) * 0.2
+    return body + tone
+
+
+def freeze():
+    # Glassy crackle: high partials with a fast decay.
+    n = int(0.8 * RATE)
+    t = t_axis(0.8)
+    chime = sum(np.sin(2 * np.pi * f * t) * a for f, a in [(1320, 1.0), (1760, 0.6), (2490, 0.4), (3310, 0.3)])
+    crackle = lowpass(rng.normal(0, 1, n), 6000) * (rng.random(n) > 0.97) * 2.0
+    return (chime * 0.4 + crackle) * env(n, 0.002, 2.5)
+
+
+def mine_drop():
+    # Heavy clunk on concrete, then a short arming beep.
+    n = int(0.5 * RATE)
+    t = t_axis(0.5)
+    clunk = (np.sin(2 * np.pi * 160 * t) + lowpass(rng.normal(0, 1, n), 800)) * env(n, 0.001, 4.0)
+    beep = np.zeros(n)
+    s0 = int(0.3 * RATE)
+    seg = t[: n - s0]
+    beep[s0:] = np.sin(2 * np.pi * 1400 * seg) * env(n - s0, 0.002, 3.0) * 0.4
+    return clunk + beep
+
+
+def denied():
+    # Dull double buzz for "not enough energy".
+    n = int(0.3 * RATE)
+    t = t_axis(0.3)
+    gate = ((t % 0.15) < 0.09).astype(float)
+    return lowpass(saw(95, t), 900) * gate * env(n, 0.002, 1.0)
+
+
+def cloak():
+    # Smog vent: a long hiss that falls away over a low, fading drone.
+    n = int(0.9 * RATE)
+    t = t_axis(0.9)
+    hiss = lowpass(rng.normal(0, 1, n), 3000) * env(n, 0.02, 1.4)
+    drone = np.sin(2 * np.pi * (70 - 25 * t) * t) * env(n, 0.05, 2.0) * 0.6
+    return hiss + drone
+
+
+def overdrive():
+    # Gun motors spinning up: a rising whine over a fast ratchet.
+    n = int(0.7 * RATE)
+    t = t_axis(0.7)
+    whine = saw(180 + 900 * t, t) * env(n, 0.05, 0.8) * 0.4
+    ratchet = lowpass(rng.normal(0, 1, n), 2500) * ((t % 0.035) < 0.012) * env(n, 0.01, 1.0)
+    return lowpass(whine, 3500) + ratchet
+
+
 def music_yard():
     """A 32-second dark industrial loop at 90 bpm in D minor: drone, pulse, metal hits."""
     bpm = 90.0
@@ -183,6 +258,15 @@ def main():
     save("pickup", pickup(), 0.7)
     save("ui_click", ui_click(), 0.6)
     save("music_yard", music_yard(), 0.75)
+    # Milestone 2 sounds (generated after the music so the music stays the same).
+    save("shield", shield(), 0.8)
+    save("jump", jump(), 0.8)
+    save("launch", launch(), 0.75)
+    save("freeze", freeze(), 0.7)
+    save("mine_drop", mine_drop(), 0.75)
+    save("denied", denied(), 0.6)
+    save("cloak", cloak(), 0.75)
+    save("overdrive", overdrive(), 0.7)
 
 
 if __name__ == "__main__":

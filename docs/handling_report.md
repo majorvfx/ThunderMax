@@ -11,6 +11,8 @@ Targets are our own design windows from `data/handling_targets.json`.
 | stop_time_s | 0.67 |  |
 | turn_circle_half_speed_m | 13.07 | 6.0 to 18.0 |
 | turn_circle_top_speed_m | 27.09 | 18.0 to 40.0 |
+| tight_turn_circle_top_speed_m | 3.65 |  |
+| tight_turn_180_from_top_speed_s | 0.75 |  |
 | digital_full_lock_s | 0.17 | 0.08 to 0.3 |
 | ramp_takeoff_speed_ms | 29.94 |  |
 | ramp_jump_distance_m | 33.95 | 15.0 to 45.0 |
@@ -21,7 +23,11 @@ Targets are our own design windows from `data/handling_targets.json`.
 | ram_damage_to_rammer | 10.42 |  |
 | stays_upright_after_ram | true | true |
 | parked_shoved_m | 9.46 |  |
-| drone_1_travel_25s_m | 374.26 |  |
-| drone_2_travel_25s_m | 360.19 |  |
-| drone_3_travel_25s_m | 421.14 |  |
-| time_to_wreck_drone_s | 4.35 |  |
+| spring_jack_height_m | 3.95 |  |
+| fire_jug_range_m | 19.85 |  |
+| rivet_storm_damage_per_s | 34.78 |  |
+| drone_1_travel_25s_m | 357.78 |  |
+| drone_2_travel_25s_m | 383.84 |  |
+| drone_3_travel_25s_m | 425.92 |  |
+| drones_first_hit_on_player_s | 5.22 |  |
+| time_to_wreck_drone_s | 1.77 |  |

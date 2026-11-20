@@ -41,6 +41,8 @@ var drift_grip := 2.2            ## sideways damping while power-sliding
 var drift_min_speed := 12.0      ## m/s needed to start a power slide (brake + steer)
 var drift_turn_boost := 1.35
 var drift_brake_scale := 0.25
+var tight_turn_boost := 1.7      ## turn-rate multiplier while the tight turn button is held
+var tight_turn_drag := 5.0       ## m/s^2 of speed scrubbed off during a tight turn
 
 # Air and body
 var gravity_scale := 1.6
@@ -80,6 +82,8 @@ const TUNABLE := [
 	["grip", 1.0, 30.0, 0.5],
 	["drift_grip", 0.2, 10.0, 0.1],
 	["drift_turn_boost", 1.0, 2.5, 0.05],
+	["tight_turn_boost", 1.0, 3.0, 0.05],
+	["tight_turn_drag", 0.0, 20.0, 0.5],
 	["gravity_scale", 0.5, 4.0, 0.1],
 	["air_control", 0.0, 1.0, 0.05],
 	["upright_strength", 1.0, 30.0, 0.5],

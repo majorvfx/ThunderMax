@@ -1,0 +1,125 @@
+{
+  "_note": "Thunder Max combo moves. Inputs are D-pad sequences (combo_up/down/left/right actions, remappable). Each press must come within window_s of the last. Moves with \"hold\": true only fire while the combo hold control (RT by default) is held. Edit freely: names, inputs, costs and effects are all ours.",
+  "window_s": 0.45,
+  "energy_max": 100,
+  "energy_regen": 6.0,
+  "moves": {
+    "scrap_mine": {
+      "name": "Scrap Mine",
+      "inputs": [
+        "right",
+        "left",
+        "down"
+      ],
+      "cost": 25,
+      "cooldown": 0.5,
+      "description": "Drops a spiked charge behind you. Arms after half a second.",
+      "damage": 25.0,
+      "radius": 2.4,
+      "arm_s": 0.5,
+      "life_s": 30.0,
+      "max_per_car": 3
+    },
+    "cold_snap": {
+      "name": "Cold Snap",
+      "inputs": [
+        "left",
+        "right",
+        "up"
+      ],
+      "cost": 35,
+      "cooldown": 0.8,
+      "description": "A coolant round that seizes the target's engine and wheels.",
+      "freeze_s": 2.2,
+      "damage": 4.0,
+      "speed": 75.0
+    },
+    "spring_jack": {
+      "name": "Spring Jack",
+      "inputs": [
+        "up",
+        "up",
+        "left"
+      ],
+      "cost": 25,
+      "cooldown": 0.6,
+      "description": "Hydraulic rams kick the car into the air. Hop walls, dodge mines, land on roofs.",
+      "launch_speed": 11.0
+    },
+    "rivet_storm": {
+      "name": "Rivet Storm",
+      "inputs": [
+        "up",
+        "down",
+        "left",
+        "right",
+        "right",
+        "left",
+        "down",
+        "up"
+      ],
+      "hold": true,
+      "cost": 50,
+      "cooldown": 1.0,
+      "description": "Hold RT and run the long code: the rivet guns fire twice as fast, hit harder and never overheat for a few seconds.",
+      "duration": 4.0,
+      "rate_mult": 2.0,
+      "damage_mult": 1.5
+    },
+    "fire_jug": {
+      "name": "Fire Jug",
+      "inputs": [
+        "right",
+        "left",
+        "up"
+      ],
+      "cost": 35,
+      "cooldown": 0.8,
+      "description": "A lobbed jug of burning fuel. Leaves a fire pool that sets cars alight.",
+      "damage": 10.0,
+      "pool_radius": 4.5,
+      "pool_s": 4.0,
+      "burn_s": 3.0,
+      "burn_dps": 6.0
+    },
+    "tailgunner": {
+      "name": "Tailgunner",
+      "inputs": [
+        "left",
+        "right",
+        "down"
+      ],
+      "cost": 35,
+      "cooldown": 0.6,
+      "uses_special": true,
+      "aim_cone_deg": 30.0,
+      "aim_range_m": 70.0,
+      "description": "Fires your selected special weapon out the back, using one of its shots and no energy. With no special selected, or none left, it fires a Cold Snap freeze blast out the back instead, which costs energy."
+    },
+    "blackout": {
+      "name": "Blackout",
+      "inputs": [
+        "right",
+        "down",
+        "left",
+        "up"
+      ],
+      "cost": 40,
+      "cooldown": 1.0,
+      "description": "The car vents black smog and goes dark. Nothing can lock on to you or track you until it clears or you fire.",
+      "duration": 4.0
+    },
+    "bulwark": {
+      "name": "Bulwark",
+      "inputs": [
+        "up",
+        "up",
+        "right"
+      ],
+      "cost": 50,
+      "cooldown": 1.0,
+      "description": "Welded plates slam shut around the car. Takes no damage for a few seconds.",
+      "duration": 3.0
+    }
+  }
+}

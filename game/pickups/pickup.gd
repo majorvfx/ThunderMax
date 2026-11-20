@@ -27,6 +27,7 @@ func _ready() -> void:
 	shape.shape = s
 	add_child(shape)
 	_build_visual()
+	add_to_group("pickups")
 	_base_y = _visual.position.y
 	_time = randf() * TAU
 	body_entered.connect(_on_body_entered)
@@ -38,17 +39,25 @@ func _build_visual() -> void:
 	var m := StandardMaterial3D.new()
 	m.emission_enabled = true
 	m.roughness = 0.4
-	if kind == "health":
-		m.albedo_color = Color(0.85, 0.82, 0.72)
-		m.emission = Color(0.9, 0.2, 0.15)
-		m.emission_energy_multiplier = 1.4
-		VehicleVisualParts.box(_visual, Vector3(1.0, 0.32, 0.32), Vector3.ZERO, m)
-		VehicleVisualParts.box(_visual, Vector3(0.32, 1.0, 0.32), Vector3.ZERO, m)
-	else:
-		m.albedo_color = Color(0.25, 0.3, 0.32)
-		m.emission = Color(0.95, 0.6, 0.15)
-		m.emission_energy_multiplier = 1.6
-		VehicleVisualParts.cylinder(_visual, 0.32, 0.9, Vector3.ZERO, Vector3(0, 0, 18), m)
+	match kind:
+		"health":
+			m.albedo_color = Color(0.85, 0.82, 0.72)
+			m.emission = Color(0.9, 0.2, 0.15)
+			m.emission_energy_multiplier = 1.4
+			VehicleVisualParts.box(_visual, Vector3(1.0, 0.32, 0.32), Vector3.ZERO, m)
+			VehicleVisualParts.box(_visual, Vector3(0.32, 1.0, 0.32), Vector3.ZERO, m)
+		"weapon":
+			# Rusted ammo crate with a glowing hazard band.
+			m.albedo_color = Color(0.3, 0.27, 0.2)
+			m.emission = Color(1.0, 0.85, 0.2)
+			m.emission_energy_multiplier = 1.2
+			VehicleVisualParts.box(_visual, Vector3(1.1, 0.7, 0.8), Vector3.ZERO, VehicleVisualParts.material("rust"))
+			VehicleVisualParts.box(_visual, Vector3(1.14, 0.16, 0.84), Vector3.ZERO, m)
+		_:
+			m.albedo_color = Color(0.25, 0.3, 0.32)
+			m.emission = Color(0.95, 0.6, 0.15)
+			m.emission_energy_multiplier = 1.6
+			VehicleVisualParts.cylinder(_visual, 0.32, 0.9, Vector3.ZERO, Vector3(0, 0, 18), m)
 	var light := OmniLight3D.new()
 	light.light_color = m.emission
 	light.light_energy = 1.2
@@ -72,7 +81,7 @@ func _try_give(body: Node3D) -> void:
 		return
 	if (body as ArcadeVehicle).apply_pickup(kind, amount):
 		_set_active(false)
-		GameAudio.play_at("pickup", global_position, 0.8, 1.0 if kind == "health" else 1.25)
+		GameAudio.play_at("pickup", global_position, 0.8, {"health": 1.0, "turbo": 1.25, "weapon": 0.8}.get(kind, 1.0))
 		get_tree().create_timer(respawn_seconds, false).timeout.connect(_respawn)
 
 

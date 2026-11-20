@@ -78,6 +78,7 @@ func _process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	var go := event.is_action_pressed("ui_accept")
 	go = go or event.is_action_pressed(InputSetup.action(1, "pause"))
+	go = go or event.is_action_pressed(InputSetup.action(1, "view_mod"))
 	if event is InputEventJoypadButton and event.pressed and event.button_index == JOY_BUTTON_A:
 		go = true
 	if go:

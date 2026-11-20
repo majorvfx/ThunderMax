@@ -6,6 +6,8 @@ extends RefCounted
 const VEHICLE_DIR := "res://data/vehicles/"
 const WEAPONS_PATH := "res://data/weapons.json"
 const PICKUPS_PATH := "res://data/pickups.json"
+const COMBOS_PATH := "res://data/combos.json"
+const SPECIALS_PATH := "res://data/specials.json"
 const TUNING_DIR := "user://tuning/"
 
 

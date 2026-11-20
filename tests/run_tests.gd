@@ -7,12 +7,14 @@ extends SceneTree
 ## 1. Core rule tests (pure logic, no physics).
 ## 2. Handling measurements on a flat test pad, checked against
 ##    data/handling_targets.json and written to docs/handling_report.md.
-## 3. Arena smoke test: drones lap the Foundry Yard and the gun wrecks a drone.
+## 3. Combo moves and special weapons on the test pad.
+## 4. Arena smoke test: drones lap the Foundry Yard, fight back, and the gun wrecks a drone.
 
 var _pass := 0
 var _fail := 0
 var _failures: Array[String] = []
 var _measure := {}
+var _half_turn_s := 0.0
 
 
 class ScriptedDriver:
@@ -33,8 +35,13 @@ func _run() -> void:
 	_test_combat_rules()
 	_test_input()
 	_test_remap()
+	await _test_view_commands()
+	_test_combo_buffer()
+	_test_status_effects()
 	print("== Handling measurements ==")
 	await _handling_measurements()
+	print("== Combo moves and specials ==")
+	await _combo_moves()
 	print("== Arena smoke test ==")
 	await _arena_smoke()
 	_write_report()
@@ -202,19 +209,47 @@ func _test_input() -> void:
 			if ev is InputEventJoypadButton or ev is InputEventJoypadMotion:
 				has_pad = true
 		check(has_pad, "%s: accelerate is on the pad" % preset)
-	# Modern: RT accelerates. Classic: A accelerates.
+	# The four D-pad layouts, checked against the controls table Mathias sent
+	# (PlayStation buttons moved to Xbox: Cross A, Circle B, Square X, Triangle Y,
+	# L1/R1 LB/RB, L2/R2 LT/RT, Select View, Start Menu).
+	var A := "btn:%d" % JOY_BUTTON_A
+	var B := "btn:%d" % JOY_BUTTON_B
+	var X := "btn:%d" % JOY_BUTTON_X
+	var Y := "btn:%d" % JOY_BUTTON_Y
+	var LB := "btn:%d" % JOY_BUTTON_LEFT_SHOULDER
+	var RB := "btn:%d" % JOY_BUTTON_RIGHT_SHOULDER
+	var LT := "axis:%d:+" % JOY_AXIS_TRIGGER_LEFT
+	var RT := "axis:%d:+" % JOY_AXIS_TRIGGER_RIGHT
+	var expected := {
+		"standard": {"accelerate": X, "brake": B, "turbo": Y, "tight_turn": A,
+			"special_next": RB, "special_prev": LB, "fire_special": LT, "fire_gun": RT},
+		"alt1": {"accelerate": A, "brake": LT, "turbo": Y, "tight_turn": RT,
+			"special_next": RB, "special_prev": LB, "fire_special": B, "fire_gun": X},
+		"alt2": {"accelerate": A, "brake": LT, "turbo": Y, "tight_turn": RT,
+			"special_next": RB, "special_prev": LB, "fire_special": X, "fire_gun": B},
+		"shoulders": {"accelerate": RT, "brake": RB, "turbo": LB, "tight_turn": LT,
+			"special_next": Y, "special_prev": B, "fire_special": A, "fire_gun": X},
+	}
+	for preset in expected:
+		InputSetup.apply_preset(1, -1, preset, false)
+		for a in expected[preset]:
+			check(_has_code(a, expected[preset][a]), "%s: %s on %s" % [preset, a, InputBindings.describe(expected[preset][a])])
+		check(_has_code("accelerate", "btn:%d" % JOY_BUTTON_DPAD_UP), "%s: D-pad up is gas" % preset)
+		check(_has_code("brake", "btn:%d" % JOY_BUTTON_DPAD_DOWN), "%s: D-pad down is brake" % preset)
+		for dir in ["left", "right"]:
+			var code := "btn:%d" % (JOY_BUTTON_DPAD_LEFT if dir == "left" else JOY_BUTTON_DPAD_RIGHT)
+			check(_has_code("steer_" + dir, code) and _has_code("combo_" + dir, code), "%s: D-pad %s steers and enters combos" % [preset, dir])
+		check(_has_code("pause", "btn:%d" % JOY_BUTTON_BACK), "%s: View pauses" % preset)
+		check(_has_code("view_mod", "btn:%d" % JOY_BUTTON_START), "%s: Menu is the view button" % preset)
+	check(InputSetup.DEFAULT_PRESET == "standard" and InputSetup.PRESETS[0] == "standard", "Standard is the default layout")
+	check(InputSetup.resolve_preset("classic") == "standard", "the old Classic setting becomes Standard")
+	check(InputSetup.resolve_preset("junk") == "standard", "an unknown layout falls back to Standard")
+	# Modern: our own stick-and-trigger layout.
 	InputSetup.apply_preset(1, -1, "modern", false)
-	var rt := false
-	for ev in InputMap.action_get_events(InputSetup.action(1, "accelerate")):
-		if ev is InputEventJoypadMotion and ev.axis == JOY_AXIS_TRIGGER_RIGHT:
-			rt = true
-	check(rt, "modern: right trigger accelerates")
-	InputSetup.apply_preset(1, -1, "classic", false)
-	var a_btn := false
-	for ev in InputMap.action_get_events(InputSetup.action(1, "accelerate")):
-		if ev is InputEventJoypadButton and ev.button_index == JOY_BUTTON_A:
-			a_btn = true
-	check(a_btn, "classic: A accelerates")
+	check(_has_code("accelerate", RT) and _has_code("brake", LT) and _has_code("tight_turn", B), "modern: RT gas, LT brake, B tight turn")
+	for preset in InputSetup.PRESETS:
+		InputSetup.apply_preset(1, -1, preset, true)
+		check(_has_code("combo_hold", RT), "%s: RT is the combo hold" % preset)
 	InputSetup.apply_preset(1, -1, "modern", true)
 
 
@@ -251,8 +286,8 @@ func _test_remap() -> void:
 	check(_has_code("fire_gun", "key:%d" % KEY_SPACE), "remap: pad remap leaves keyboard alone")
 
 	# Pad remaps are per layout.
-	_apply_with_remaps("classic")
-	check(_has_code("fire_gun", "btn:%d" % JOY_BUTTON_B), "remap: classic layout is untouched")
+	_apply_with_remaps("standard")
+	check(_has_code("fire_gun", "axis:%d:+" % JOY_AXIS_TRIGGER_RIGHT), "remap: standard layout is untouched")
 
 	# Keyboard remap with swap: accelerate main key to Space (the gun's key).
 	_apply_with_remaps("modern")
@@ -288,6 +323,148 @@ func _test_remap() -> void:
 
 	InputBindings.overrides = saved
 	InputSetup.apply_preset(1, -1, "modern", true)
+
+
+## Simulated presses register as "just pressed" on the next rendered frame, which is
+## when the match polls these commands too.
+func _poll_after(pd: PlayerDriver) -> Array[String]:
+	await process_frame
+	return pd.poll_commands(1.0 / 60.0)
+
+
+func _test_view_commands() -> void:
+	InputSetup.apply_preset(1, -1, "standard", true)
+	var pd := PlayerDriver.new(1, -1)
+	var mod := InputSetup.action(1, "view_mod")
+	var up := InputSetup.action(1, "combo_up")
+	await _poll_after(pd)   # first poll only records what's held
+	Input.action_press(mod)
+	await _poll_after(pd)
+	Input.action_press(up)
+	var out: Array[String] = await _poll_after(pd)
+	check(out == ["view_next"], "Menu + D-pad up changes the view (got %s)" % str(out))
+	var f := pd.get_frame(null, 1.0 / 60.0)
+	check(f.combo_presses.is_empty(), "D-pad presses with Menu held aren't combo presses")
+	Input.action_release(up)
+	Input.action_release(mod)
+	out = await _poll_after(pd)
+	check(not ("pause" in out), "releasing Menu after a view command doesn't pause")
+	Input.action_press(mod)
+	await _poll_after(pd)
+	Input.action_release(mod)
+	out = await _poll_after(pd)
+	check(out == ["pause"], "tapping Menu on its own pauses (got %s)" % str(out))
+	Input.action_press(InputSetup.action(1, "radar"))
+	out = await _poll_after(pd)
+	Input.action_release(InputSetup.action(1, "radar"))
+	check(out == ["radar"], "the radar key toggles the radar (got %s)" % str(out))
+	await process_frame
+	InputSetup.apply_preset(1, -1, "modern", true)
+
+
+func _test_combo_buffer() -> void:
+	var data: Dictionary = GameData.load_json(GameData.COMBOS_PATH)
+	var moves: Dictionary = data["moves"]
+	check(moves.size() >= 5, "combos.json has at least five moves")
+	var seen := {}
+	for id in moves:
+		var key := ",".join(moves[id]["inputs"])
+		check(not seen.has(key), "combo %s has its own inputs" % id)
+		seen[key] = true
+		check(moves[id]["inputs"].size() >= 3, "combo %s takes three or more presses" % id)
+	var b := ComboBuffer.new()
+	b.configure(moves, 0.45)
+	# Each move fires on its own sequence, tapped 0.1 s apart.
+	var t := 10.0
+	for id in moves:
+		var got := ""
+		var hold := bool(moves[id].get("hold", false))
+		for d in moves[id]["inputs"]:
+			t += 0.1
+			got = b.push(d, t, hold)
+		check(got == id, "combo buffer recognises %s" % id)
+		check(b.pending().is_empty(), "combo buffer clears after %s" % id)
+		t += 1.0
+	# Too slow: a gap longer than the window starts over.
+	check(b.push("down", 20.0) == "" and b.push("down", 20.1) == "", "slow combo: first presses")
+	check(b.push("up", 20.8) == "", "slow combo does not fire")
+	check(b.pending() == ["up"], "a late press starts a new sequence")
+	# Steering-style taps on left and right alone never fire a move.
+	b.reset()
+	var fired := false
+	for i in 12:
+		if b.push(["left", "right"][i % 2], 30.0 + i * 0.1) != "":
+			fired = true
+	check(not fired, "left/right steering taps fire nothing")
+	# Held moves: Rivet Storm needs the hold control, and with it held the long code
+	# never sets off a short move partway through.
+	var storm: Array = moves["rivet_storm"]["inputs"]
+	check(storm.size() == 8 and bool(moves["rivet_storm"]["hold"]), "Rivet Storm is the long held code")
+	b.reset()
+	var fired_ids: Array[String] = []
+	for i in storm.size():
+		var id := b.push(storm[i], 40.0 + i * 0.1, false)
+		if id != "":
+			fired_ids.append(id)
+	check(not ("rivet_storm" in fired_ids), "Rivet Storm doesn't fire without the hold")
+	b.reset()
+	fired_ids.clear()
+	for i in storm.size():
+		var id := b.push(storm[i], 50.0 + i * 0.1, true)
+		if id != "":
+			fired_ids.append(id)
+	check(fired_ids == ["rivet_storm"], "held: the long code fires only Rivet Storm (got %s)" % str(fired_ids))
+	# Holding RT (it accelerates in Modern) doesn't block the short moves.
+	b.reset()
+	var napalm: Array = moves["fire_jug"]["inputs"]
+	var got_napalm := ""
+	for i in napalm.size():
+		got_napalm = b.push(napalm[i], 60.0 + i * 0.1, true)
+	check(got_napalm == "fire_jug", "short moves still fire while RT is held")
+	# Longest sequence wins when two moves end on the same presses.
+	var nested := ComboBuffer.new()
+	nested.configure({"short": {"inputs": ["down", "up"]}, "long": {"inputs": ["down", "down", "up"]}}, 0.45)
+	nested.push("down", 0.0)
+	nested.push("down", 0.1)
+	check(nested.push("up", 0.2) == "long", "longest matching combo wins")
+
+
+func _test_status_effects() -> void:
+	var st := StatusEffects.new()
+	st.configure(100.0, 6.0)
+	check(st.try_spend("jack", 25.0, 0.5) and st.energy == 75.0, "a move spends its energy")
+	check(not st.try_spend("jack", 25.0, 0.5), "a move is blocked by its cooldown")
+	check(st.try_spend("other", 25.0, 0.5), "cooldowns are per move")
+	st.tick(0.6)
+	near(st.energy, 50.0 + 3.6, 0.001, "energy regenerates")
+	check(st.try_spend("jack", 25.0, 0.5), "a move is ready after its cooldown")
+	check(not st.try_spend("big", 100.0, 0.5), "a move needs enough energy")
+	st.reset()
+	st.freeze(2.0)
+	check(st.is_frozen(), "freeze freezes")
+	st.tick(2.1)
+	check(not st.is_frozen(), "freeze wears off")
+	st.ignite(2.0, 5.0, null)
+	near(st.tick(1.0), 5.0, 0.001, "burning deals damage over time")
+	near(st.tick(5.0), 5.0, 0.001, "burning stops when its time runs out")
+	check(not st.is_burning(), "burn wears off")
+	st.ignite(3.0, 5.0, null)
+	st.freeze(3.0)
+	st.shield(2.0)
+	check(st.is_shielded() and not st.is_burning() and not st.is_frozen(), "the shield puts out fire and thaws")
+	st.freeze(2.0)
+	st.ignite(2.0, 5.0, null)
+	check(not st.is_frozen() and not st.is_burning(), "the shield blocks freeze and fire")
+	st.tick(2.1)
+	check(not st.is_shielded(), "the shield wears off")
+	st.cloak(4.0)
+	check(st.is_cloaked(), "Blackout cloaks")
+	st.reveal()
+	check(not st.is_cloaked(), "firing reveals a cloaked car")
+	st.overdrive(1.0)
+	check(st.is_overdriven(), "Rivet Storm overdrives the guns")
+	st.tick(1.1)
+	check(not st.is_overdriven(), "Rivet Storm wears off")
 
 
 # --- Handling on a test pad -----------------------------------------------------------
@@ -374,6 +551,8 @@ func _handling_measurements() -> void:
 	# 3. Turning circles at half and full throttle (stick at full lock).
 	_measure["turn_circle_half_speed_m"] = await _turn_circle(0.5)
 	_measure["turn_circle_top_speed_m"] = await _turn_circle(1.0)
+	_measure["tight_turn_circle_top_speed_m"] = await _turn_circle(1.0, true)
+	_measure["tight_turn_180_from_top_speed_s"] = _half_turn_s
 
 	# 4. Digital steering: time to full lock on the D-pad.
 	world = _make_pad()
@@ -469,6 +648,8 @@ func _handling_measurements() -> void:
 		else:
 			check(got == want, "handling %s = %s, target %s" % [key, str(got), str(want)])
 	check(_measure["upright_after_landing"], "lands the kicker jump on its wheels")
+	check(float(_measure["tight_turn_circle_top_speed_m"]) < float(_measure["turn_circle_top_speed_m"]) * 0.8,
+		"the tight turn button turns much tighter at top speed")
 	check(float(_measure["ram_damage_to_parked"]) > 0.0, "a top-speed T-bone damages the parked car")
 	for k in _measure.keys():
 		print("  %-30s %s" % [k, _fmt(_measure[k])])
@@ -480,7 +661,7 @@ func _spawn_settled(world: Node3D, at: Vector3, yaw: float = 0.0) -> Array:
 	return pair
 
 
-func _turn_circle(throttle: float) -> float:
+func _turn_circle(throttle: float, tight: bool = false) -> float:
 	var world := _make_pad()
 	var pair := await _spawn_settled(world, Vector3(0, 1.0, 0))
 	var v: ArcadeVehicle = pair[0]
@@ -489,16 +670,20 @@ func _turn_circle(throttle: float) -> float:
 	await _frames(240)
 	drv.frame.steer = 1.0
 	drv.frame.steer_digital = false
-	await _frames(240)
+	drv.frame.tight_turn = tight
+	await _frames(240 if not tight else 30)
 	var pts: Array[Vector3] = []
 	var yaw_total := 0.0
 	var last_fwd := _flat(-v.global_transform.basis.z).normalized()
 	var guard := 0
+	_half_turn_s = 0.0
 	while yaw_total < TAU and guard < 2000:
 		await physics_frame
 		guard += 1
 		var f := _flat(-v.global_transform.basis.z).normalized()
 		yaw_total += absf(last_fwd.signed_angle_to(f, Vector3.UP))
+		if _half_turn_s == 0.0 and yaw_total >= PI:
+			_half_turn_s = guard / 60.0
 		last_fwd = f
 		pts.append(_flat(v.global_position))
 	var diameter := 0.0
@@ -520,12 +705,304 @@ func _fmt(x: Variant) -> String:
 	return str(x)
 
 
+# --- Combo moves and specials -----------------------------------------------------------
+
+## Taps a D-pad sequence the way a player would: one press every few physics steps.
+## `hold` keeps the combo hold control (RT) down while the code goes in.
+func _tap(drv: ScriptedDriver, seq: Array, hold: bool = false) -> void:
+	drv.frame.combo_hold = hold
+	for d in seq:
+		drv.frame.combo_presses.append(d)
+		await _frames(4)
+	drv.frame.combo_hold = false
+
+
+func _inputs(id: String) -> Array:
+	return GameData.load_json(GameData.COMBOS_PATH)["moves"][id]["inputs"]
+
+
+func _count_nodes(parent: Node, script_class: String) -> Array:
+	var out := []
+	for c in parent.get_children():
+		if c.get_script() != null and c.get_script().get_global_name() == script_class:
+			out.append(c)
+	return out
+
+
+func _combo_moves() -> void:
+	var world := _make_pad()
+	var pair := await _spawn_settled(world, Vector3(0, 1.0, 0))
+	var v: ArcadeVehicle = pair[0]
+	var drv: ScriptedDriver = pair[1]
+	var used: Array[String] = []
+	var failed: Array[String] = []
+	v.combos.move_used.connect(func(_v, id, _n): used.append(id))
+	v.combos.move_failed.connect(func(_v, id, why): failed.append("%s:%s" % [id, why]))
+	var target: ArcadeVehicle = _spawn(world, "scrap_drone", Vector3(0, 1.0, -22), 0.0)[0]
+	await _frames(45)
+
+	# Spring Jack: down, down, up launches the car.
+	var y0 := v.global_position.y
+	var e0 := v.status.energy
+	await _tap(drv, _inputs("spring_jack"))
+	var peak := y0
+	for i in 40:
+		await physics_frame
+		peak = maxf(peak, v.global_position.y)
+	check("spring_jack" in used, "Spring Jack fires from its D-pad combo")
+	check(peak - y0 > 2.0, "Spring Jack lifts the car (%.1f m)" % (peak - y0))
+	check(v.status.energy < e0, "Spring Jack costs energy")
+	_measure["spring_jack_height_m"] = peak - y0
+	await _frames(90)
+
+	# Bulwark: no damage while it is up.
+	v.status.reset()
+	await _tap(drv, _inputs("bulwark"))
+	check(v.status.is_shielded(), "Bulwark raises the shield")
+	var hp := v.health.current
+	var blocked := [0.0]
+	v.shield_blocked.connect(func(_v, amount): blocked[0] += amount)
+	v.take_damage(20.0, target)
+	check(v.health.current == hp and blocked[0] == 20.0, "Bulwark blocks damage")
+	v.status.shield_time = 0.0
+	v.take_damage(5.0, target)
+	check(v.health.current == hp - 5.0, "damage lands once Bulwark drops")
+
+	# Not enough energy: the move fails and nothing happens.
+	v.status.reset()
+	v.status.energy = 10.0
+	await _tap(drv, _inputs("bulwark"))
+	check(not v.status.is_shielded() and "bulwark:energy" in failed, "Bulwark needs energy")
+
+	# Cold Snap: freezes the drone in front.
+	v.status.reset()
+	await _tap(drv, _inputs("cold_snap"))
+	var t := 0.0
+	while not target.status.is_frozen() and t < 2.0:
+		await physics_frame
+		t += 1.0 / 60.0
+	check(target.status.is_frozen(), "Cold Snap freezes the car in front (%.2f s)" % t)
+	# A frozen car cannot drive.
+	var tdrv: ScriptedDriver = target.driver
+	tdrv.frame.throttle = 1.0
+	var tz := target.global_position
+	await _frames(40)
+	check(target.global_position.distance_to(tz) < 1.0, "a frozen car cannot drive")
+	await _frames(120)
+	check(not target.status.is_frozen(), "the freeze thaws")
+	tdrv.frame.throttle = 0.0
+	await _frames(60)
+
+	# Scrap Mine: dropped behind, blows up the next car over it.
+	v.status.reset()
+	await _tap(drv, _inputs("scrap_mine"))
+	var mines := get_nodes_in_group("mines")
+	check(mines.size() == 1, "Scrap Mine drops a mine")
+	if mines.size() == 1:
+		var mine: Node3D = mines[0]
+		var behind := (mine.global_position - v.global_position).dot(v.global_transform.basis.z)
+		check(behind > 1.5, "the mine lands behind the car")
+		await _frames(45)
+		var thp := target.health.current
+		target.global_transform = Transform3D(Basis.IDENTITY, mine.global_position + Vector3.UP * 0.8)
+		target.linear_velocity = Vector3.ZERO
+		target.reset_physics_interpolation()
+		await _frames(10)
+		check(target.health.current < thp, "the mine damages the car that hits it")
+		check(not is_instance_valid(mine) or mine.is_queued_for_deletion(), "the mine is used up")
+	target.global_transform = Transform3D(Basis.IDENTITY, Vector3(0, 1.0, -22))
+	target.linear_velocity = Vector3.ZERO
+	target.reset_physics_interpolation()
+	target.health.current = target.stats.max_health
+	await _frames(45)
+
+	# Fire Jug: a lobbed bomb that leaves burning fuel.
+	v.status.reset()
+	await _tap(drv, _inputs("fire_jug"))
+	var pools: Array = []
+	t = 0.0
+	while pools.is_empty() and t < 3.0:
+		await physics_frame
+		t += 1.0 / 60.0
+		pools = _count_nodes(world, "FirePool")
+	check(not pools.is_empty(), "Fire Jug leaves a fire pool")
+	if not pools.is_empty():
+		var pool: Node3D = pools[0]
+		var lob := _flat(pool.global_position - v.global_position).length()
+		check(lob > 8.0, "Fire Jug is thrown ahead (%.1f m)" % lob)
+		_measure["fire_jug_range_m"] = lob
+		var thp := target.health.current
+		target.global_transform = Transform3D(Basis.IDENTITY, pool.global_position + Vector3.UP * 0.8)
+		target.linear_velocity = Vector3.ZERO
+		target.reset_physics_interpolation()
+		await _frames(60)
+		check(target.status.is_burning(), "the fire pool sets cars alight")
+		check(target.health.current < thp, "burning hurts")
+	# The shield puts the fire out.
+	target.combos.request_move("bulwark")
+	check(not target.status.is_burning(), "Bulwark puts out the fire")
+	target.status.reset()
+	target.health.current = target.stats.max_health
+	target.global_transform = Transform3D(Basis.IDENTITY, Vector3(0, 1.0, -22))
+	target.linear_velocity = Vector3.ZERO
+	target.reset_physics_interpolation()
+	await _frames(45)
+
+	# Tailgunner with no special: a freeze blast out the back, paid for with energy.
+	v.status.reset()
+	v.specials.clear()
+	target.global_transform = Transform3D(Basis.IDENTITY, Vector3(0, 1.0, 18))
+	target.linear_velocity = Vector3.ZERO
+	target.reset_physics_interpolation()
+	await _frames(30)
+	var tail_cost := float(GameData.load_json(GameData.COMBOS_PATH)["moves"]["tailgunner"]["cost"])
+	var e_tail := v.status.energy
+	await _tap(drv, _inputs("tailgunner"))
+	check("tailgunner" in used, "Tailgunner fires from its D-pad combo")
+	near(v.status.energy, e_tail - tail_cost, 2.0, "with no special, Tailgunner costs energy")
+	t = 0.0
+	while not target.status.is_frozen() and t < 1.5:
+		await physics_frame
+		t += 1.0 / 60.0
+	check(target.status.is_frozen(), "with no special, Tailgunner freezes the car behind (%.2f s)" % t)
+	target.status.reset()
+	await _frames(45)
+
+	# With a special selected: that weapon goes out the back, using ammo, not energy.
+	v.status.reset()
+	v.specials.add("seeker", 1)
+	var thp3 := target.health.current
+	await _tap(drv, _inputs("tailgunner"))
+	check(v.status.energy >= v.status.energy_max - 0.01, "a rear special shot costs no energy")
+	check(v.specials.count("seeker") == 0, "a rear special shot uses one of its shots")
+	t = 0.0
+	while target.health.current >= thp3 and t < 1.5:
+		await physics_frame
+		t += 1.0 / 60.0
+	check(target.health.current < thp3, "Tailgunner fires the selected Seeker at the car behind (%.2f s)" % t)
+	check(not target.status.is_frozen(), "a rear special shot is the special, not a freeze")
+	await _frames(45)
+
+	# Out of ammo: back to the freeze blast for energy.
+	var e_tail2 := v.status.energy
+	await _tap(drv, _inputs("tailgunner"))
+	near(v.status.energy, e_tail2 - tail_cost, 2.0, "out of ammo, Tailgunner uses energy again")
+	await _frames(45)
+	# No special and not enough energy: nothing fires.
+	v.status.reset()
+	v.status.energy = 10.0
+	failed.clear()
+	await _tap(drv, _inputs("tailgunner"))
+	check("tailgunner:energy" in failed, "with no special and no energy, Tailgunner fails")
+	v.status.reset()
+	target.status.reset()
+	target.health.current = target.stats.max_health
+	target.global_transform = Transform3D(Basis.IDENTITY, Vector3(0, 1.0, -22))
+	target.linear_velocity = Vector3.ZERO
+	target.reset_physics_interpolation()
+	await _frames(45)
+
+	# Blackout: a cloaked car can't be locked on or hunted, and firing gives it away.
+	var gun: MachineGun = v.get_node("MachineGun")
+	check(gun.current_target == target, "the gun locks on to the drone ahead")
+	target.combos.request_move("blackout")
+	await _frames(2)
+	check(target.status.is_cloaked(), "Blackout cloaks the car")
+	check(gun.current_target == null, "a cloaked car can't be locked on")
+	v.add_to_group("players")
+	var hunter := DroneDriver.new([Vector3.ZERO] as Array[Vector3])
+	check(hunter._find_prey(target) == v, "a drone hunts a visible player")
+	v.combos.request_move("blackout")
+	check(hunter._find_prey(target) == null, "a drone can't find a cloaked player")
+	v.remove_from_group("players")
+	v.status.reset()
+	var tdrv2: ScriptedDriver = target.driver
+	tdrv2.frame.fire_gun = true
+	await _frames(10)
+	tdrv2.frame.fire_gun = false
+	check(not target.status.is_cloaked(), "firing ends Blackout")
+	await _frames(60)
+	target.health.current = target.stats.max_health
+
+	# Rivet Storm: needs RT held through the long code, then the guns can't overheat.
+	v.status.reset()
+	gun.gun.heat = 0.0
+	gun.gun.overheated = false
+	used.clear()
+	await _tap(drv, _inputs("rivet_storm"))
+	check(not v.status.is_overdriven(), "Rivet Storm needs RT held")
+	await _frames(40)
+	v.status.reset()
+	used.clear()
+	await _tap(drv, _inputs("rivet_storm"), true)
+	check(v.status.is_overdriven() and used == ["rivet_storm"], "held: the long code fires Rivet Storm and nothing else (%s)" % str(used))
+	var shp := target.health.current
+	drv.frame.fire_gun = true
+	var max_heat := 0.0
+	var shots_t := 0.0
+	while v.status.is_overdriven() and target.is_alive():
+		await physics_frame
+		shots_t += 1.0 / 60.0
+		max_heat = maxf(max_heat, gun.gun.heat)
+	drv.frame.fire_gun = false
+	check(max_heat == 0.0 and not gun.gun.overheated, "the guns don't heat up during Rivet Storm")
+	check(target.health.current < shp or not target.is_alive(), "Rivet Storm shreds the drone")
+	_measure["rivet_storm_damage_per_s"] = (shp - maxf(target.health.current, 0.0)) / maxf(shots_t, 0.01)
+	if not target.is_alive():
+		target.respawn(Transform3D(Basis.IDENTITY, Vector3(0, 1.0, -22)))
+	target.health.current = target.stats.max_health
+	target.status.reset()
+	await _frames(45)
+
+	# Weapon crates and special weapons.
+	check(v.specials.total() == 0, "no special weapons at the start")
+	check(v.apply_pickup("weapon", 2), "a weapon crate gives a special")
+	check(v.specials.total() == 2 and v.specials.selected != "", "the crate adds two shots and selects them")
+	v.specials.clear()
+	v.specials.add("seeker", 2)
+	v.specials.add("sledge", 1)
+	drv.frame.cycle_special = 1
+	await _frames(2)
+	check(v.specials.selected == "sledge", "next special cycles the weapon")
+	drv.frame.cycle_special = -1
+	await _frames(2)
+	check(v.specials.selected == "seeker", "previous special cycles back")
+	# Seeker: a little off line but inside the lock-on cone, it homes in on the drone.
+	v.global_transform = Transform3D(Basis(Vector3.UP, deg_to_rad(5.0)), v.global_position)
+	v.reset_physics_interpolation()
+	await _frames(10)
+	var thp2 := target.health.current
+	drv.frame.fire_special = true
+	await _frames(2)
+	drv.frame.fire_special = false
+	t = 0.0
+	while target.health.current >= thp2 and t < 2.0:
+		await physics_frame
+		t += 1.0 / 60.0
+	check(target.health.current < thp2, "the Seeker locks on and hits the drone (%.2f s)" % t)
+	check(v.specials.count("seeker") == 1, "firing a special uses one shot")
+	# Frozen cars can't fire specials or use combos.
+	v.status.freeze(1.0)
+	drv.frame.fire_special = true
+	await _frames(10)
+	drv.frame.fire_special = false
+	check(v.specials.count("seeker") == 1, "a frozen car cannot fire specials")
+	failed.clear()
+	await _tap(drv, _inputs("bulwark"))
+	check("bulwark:frozen" in failed, "a frozen car cannot use combos")
+	world.queue_free()
+	await _frames(5)
+
+
 # --- Arena smoke test ---------------------------------------------------------------
 
 func _arena_smoke() -> void:
 	var m := YardMatch.new()
 	root.add_child(m)
 	await _frames(30)
+	# Laps first: with nobody to hunt, every drone should keep driving its route.
+	for d in m.drones:
+		(d.driver as DroneDriver).aggressive = false
 	var start_pos: Array[Vector3] = []
 	var travelled: Array[float] = []
 	for d in m.drones:
@@ -544,10 +1021,29 @@ func _arena_smoke() -> void:
 		check(travelled[k] > 200.0, "drone %d keeps lapping (%.0f m in 25 s)" % [k + 1, travelled[k]])
 		check(m.drones[k].global_transform.basis.y.y > 0.5, "drone %d is on its wheels" % (k + 1))
 
-	# Gun test: park a drone in front of the player and hold the trigger.
+	# Drones fight back: park the player and let them hunt.
 	var player := m.player
 	var scripted := ScriptedDriver.new()
 	player.driver = scripted
+	var drone_moves: Array[String] = []
+	for d in m.drones:
+		(d.driver as DroneDriver).aggressive = true
+		d.combos.move_used.connect(func(_v, id, _n): drone_moves.append(id))
+	var hp0 := player.health.current
+	var hunt := 0.0
+	while player.health.current >= hp0 and hunt < 30.0 and player.is_alive():
+		await physics_frame
+		hunt += 1.0 / 60.0
+	check(player.health.current < hp0 or not player.is_alive(), "drones hunt and damage the player (%.1f s)" % hunt)
+	_measure["drones_first_hit_on_player_s"] = hunt
+	for d in m.drones:
+		(d.driver as DroneDriver).aggressive = false
+	player.status.reset()
+	if not player.is_alive():
+		player.respawn(Transform3D(Basis.IDENTITY, Vector3(-10, 1.2, 70)))
+	player.health.current = player.stats.max_health
+
+	# Gun test: park a drone in front of the player and hold the trigger.
 	var target: ArcadeVehicle = m.drones[0]
 	target.driver = ScriptedDriver.new()
 	player.global_transform = Transform3D(Basis.IDENTITY, Vector3(-10, 1.2, 70))

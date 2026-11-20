@@ -14,7 +14,8 @@ func _initialize() -> void:
 func _sim(seconds: float) -> void:
 	for i in int(seconds * 60.0):
 		await physics_frame
-	await process_frame
+	# Wait for a frame drawn after the simulation, so the shot isn't one frame stale.
+	await RenderingServer.frame_post_draw
 
 
 func _run() -> void:
@@ -42,6 +43,66 @@ func _run() -> void:
 	await _sim(1.2)
 	_save("gunfight")
 	drv.frame.fire_gun = false
+	# Combo moves, closer in: Bulwark up, a Spring Jack being entered, a special loaded.
+	drone.health.reset()
+	drone.global_transform = Transform3D(Basis(Vector3.UP, 0.4), Vector3(-52, 1.2, -6))
+	drone.linear_velocity = Vector3.ZERO
+	drone.reset_physics_interpolation()
+	m.player.global_transform = Transform3D(Basis(Vector3.UP, -0.15), Vector3(-54, 1.2, 9))
+	m.player.linear_velocity = Vector3.ZERO
+	m.player.reset_physics_interpolation()
+	m.camera.snap()
+	m.player.specials.add("seeker", 3)
+	m.player.specials.add("sledge", 1)
+	m.player.status.reset()
+	m.player.combos.request_move("bulwark")
+	await _sim(0.4)
+	drv.frame.combo_presses.append("up")
+	await _sim(0.1)
+	drv.frame.combo_presses.append("up")
+	await _sim(0.1)
+	_save("combo_bulwark")
+	await _sim(0.6)
+	# Cold Snap freezes the drone ahead.
+	m.player.status.reset()
+	drone.health.reset()
+	m.player.combos.request_move("cold_snap")
+	await _sim(0.6)
+	_save("cold_snap")
+	# Fire Jug leaves burning fuel on the ground.
+	m.player.status.reset()
+	m.player.combos.request_move("fire_jug")
+	await _sim(1.4)
+	_save("fire_jug")
+	await _sim(1.5)
+	# Rivet Storm: the guns at double rate with no heat.
+	m.player.status.reset()
+	drone.status.reset()
+	drone.health.reset()
+	m.player.combos.request_move("rivet_storm")
+	drv.frame.fire_gun = true
+	await _sim(0.5)
+	_save("rivet_storm")
+	drv.frame.fire_gun = false
+	# Blackout: smog and a faded car.
+	m.player.status.reset()
+	m.player.combos.request_move("blackout")
+	await _sim(0.8)
+	_save("blackout")
+	m.player.status.reset()
+	# Menu + D-pad left / right: radar and rear-view mirror.
+	m.run_command("radar")
+	m.run_command("rear_mirror")
+	await _sim(0.6)
+	_save("radar_mirror")
+	m.run_command("radar")
+	m.run_command("rear_mirror")
+	# Menu + D-pad up twice: hood view.
+	m.run_command("view_next")
+	m.run_command("view_next")
+	await _sim(0.4)
+	_save("hood_view")
+	m.camera.cycle_view(1)
 	# Kicker jump in the east lane.
 	m.player.global_transform = Transform3D(Basis.IDENTITY, Vector3(68, 1.2, 75))
 	m.player.reset_physics_interpolation()
