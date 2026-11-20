@@ -190,6 +190,33 @@ def overdrive():
     return lowpass(whine, 3500) + ratchet
 
 
+def thruster():
+    # Rocket turbo roar. Loops cleanly: 1.0 s of noise with matching ends, a low
+    # rumble and a ragged crackle on top.
+    t = t_axis(1.0)
+    n = len(t)
+    roar = lowpass(rng.normal(0, 1, n), 1400)
+    rumble = lowpass(rng.normal(0, 1, n), 160) * 2.5
+    crackle = lowpass(rng.normal(0, 1, n), 5000) * (rng.random(n) > 0.96) * 1.5
+    flutter = 0.8 + 0.2 * np.sin(2 * np.pi * 23 * t)
+    x = (roar + rumble) * flutter + crackle
+    # Crossfade the ends so the loop has no click.
+    f = int(0.05 * RATE)
+    fade = np.linspace(0, 1, f)
+    x[:f] = x[:f] * fade + x[-f:] * (1 - fade)
+    return x[: n - f]
+
+
+def nitro():
+    # Nitrous hit: a sharp pop, a hissing rush and a falling whoosh.
+    n = int(0.7 * RATE)
+    t = t_axis(0.7)
+    pop = lowpass(rng.normal(0, 1, n), 2500) * env(n, 0.001, 6.0) * 2.0
+    rush = lowpass(rng.normal(0, 1, n), 4500) * env(n, 0.02, 1.6)
+    whoosh = np.sin(2 * np.pi * (180 - 120 * t) * t) * env(n, 0.005, 2.0) * 0.6
+    return pop + rush + whoosh
+
+
 def music_yard():
     """A 32-second dark industrial loop at 90 bpm in D minor: drone, pulse, metal hits."""
     bpm = 90.0
@@ -267,6 +294,8 @@ def main():
     save("denied", denied(), 0.6)
     save("cloak", cloak(), 0.75)
     save("overdrive", overdrive(), 0.7)
+    save("thruster", thruster(), 0.7)
+    save("nitro", nitro(), 0.8)
 
 
 if __name__ == "__main__":

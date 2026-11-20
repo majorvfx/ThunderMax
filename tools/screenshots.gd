@@ -117,6 +117,22 @@ func _run() -> void:
 	_save("kicker_jump")
 	drv.frame.throttle = 0.0
 	drv.frame.turbo = false
+	# Spring Jack from a standstill, then the rocket turbo in the air.
+	await _sim(1.5)
+	m.player.global_transform = Transform3D(Basis(Vector3.UP, PI * 0.5), Vector3(40, 1.2, 60))
+	m.player.linear_velocity = Vector3.ZERO
+	m.player.reset_physics_interpolation()
+	m.player.drive.turbo = m.player.stats.turbo_capacity
+	m.player.status.reset()
+	m.camera.snap()
+	await _sim(0.8)
+	m.player.combos.request_move("spring_jack")
+	await _sim(0.25)
+	drv.frame.turbo = true
+	await _sim(0.45)
+	_save("rocket_hop")
+	drv.frame.turbo = false
+	await _sim(1.5)
 	m.pause_menu.open()
 	await process_frame
 	await process_frame

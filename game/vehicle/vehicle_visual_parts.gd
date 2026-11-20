@@ -44,6 +44,9 @@ static func material(kind: String) -> StandardMaterial3D:
 			m.emission_enabled = true
 			m.emission = Color(1.0, 0.05, 0.02)
 			m.emission_energy_multiplier = 2.0
+		"soot":
+			m.albedo_color = Color(0.03, 0.025, 0.02)
+			m.roughness = 1.0
 		"beacon":
 			m.albedo_color = Color(1.0, 0.1, 0.05)
 			m.emission_enabled = true

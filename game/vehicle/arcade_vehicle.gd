@@ -126,11 +126,15 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	drive.speed = v.dot(fwd)
 	drive.lateral = v.dot(right)
 	var along_normal := v.dot(n)
+	drive.vertical = v.y
 
 	ArcadeHandling.step(stats, drive, drive_frame, grounded, dt)
 
 	if grounded:
 		v = fwd * drive.speed + right * drive.lateral + n * along_normal
+	else:
+		# Turbo in the air: the rocket pushes along the car's heading and holds off the fall.
+		v += fwd * drive.air_push + Vector3.UP * drive.air_lift
 	state.linear_velocity = v
 
 	# Yaw follows the handling model; pitch and roll are pulled upright.

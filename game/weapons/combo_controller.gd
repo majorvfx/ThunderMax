@@ -102,6 +102,10 @@ func _spring_jack(m: Dictionary) -> void:
 	vehicle.linear_velocity = v
 	Effects.sparks(vehicle.get_parent(), vehicle.global_position - Vector3.UP * 0.5, Vector3.UP)
 	GameAudio.play_at("jump", vehicle.global_position, 0.9)
+	# The rockets cough a burst of flame as you leave the ground (no turbo used).
+	var visual := vehicle.get_node_or_null("Visual") as VehicleVisual
+	if visual != null:
+		visual.flare(0.4)
 
 
 func _fire_projectile(kind: String, m: Dictionary) -> void:
