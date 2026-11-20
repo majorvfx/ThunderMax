@@ -36,9 +36,9 @@ can also be remapped (see **Remapping** below); the tables show the defaults.
 | Action | Standard (default) | Alternate 1 | Alternate 2 | Shoulders |
 | --- | --- | --- | --- | --- |
 | Gas | X / D-pad up | A / D-pad up | A / D-pad up | RT / D-pad up |
-| Brake, then reverse | B / D-pad down | LT / D-pad down | LT / D-pad down | RB / D-pad down |
+| Brake, then reverse | Y / D-pad down | LT / D-pad down | LT / D-pad down | RB / D-pad down |
 | Steer | D-pad left / right (or left stick) | same | same | same |
-| Turbo | Y | Y | Y | LB |
+| Turbo (rocket) | B | Y | Y | LB |
 | Tight turn | A | RT | RT | LT |
 | Next special | RB | RB | RB | Y |
 | Previous special | LB | LB | LB | B |
@@ -73,6 +73,17 @@ combos only.
 D-pad steering ramps in over a fraction of a second instead of snapping to full lock, and the
 left stick also steers in every layout. While Menu is held, D-pad presses are view controls,
 not combo presses (they still nudge the gas, brake or steering).
+
+In Standard, turbo is on **B** and brake / reverse is on **Y** (swapped from the classic pad,
+so the rocket sits under your thumb).
+
+**Turbo** is a rocket. It kicks you forward the moment it lights, keeps pulling hard right up to
+turbo top speed, and works in the air: hold it after a jump (or a Spring Jack) and the rockets
+drive you forward and hold off the fall, so you carry much further. Flames shoot out of the two
+nozzles on the back bumper while it burns, longer in the air. It uses the TURBO bar, and each
+light-up costs a little extra, so tapping it isn't free.
+
+![Rocket turbo after a Spring Jack](docs/screenshots/rocket_hop.png)
 
 **Tight turn** swings the car round hard: hold it and steer. At full speed it whips you round
 180 degrees in under a second, scrubbing off speed as it goes, so you can face whoever is
@@ -147,6 +158,8 @@ to the right stick.
 - **Three special weapons** from weapon crates, with ammo per weapon and cycling.
 - **Status effects**: shielded, frozen, burning, cloaked and Rivet Storm, shown on the car and
   on the HUD.
+- **Rocket turbo**: a nitrous kick, a push that doesn't fade, thrust in the air, and flames out
+  the back. B is turbo in the Standard layout.
 - **Scrap Drones fight back**: they hunt you when you're close, fire their guns in bursts,
   drop mines or fire a Tailgunner round when you chase them, raise Bulwark when hurt, and throw
   Cold Snaps. They lose you while you're under Blackout.

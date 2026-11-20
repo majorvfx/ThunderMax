@@ -140,14 +140,46 @@ func _test_handling_math() -> void:
 	var c := ArcadeHandling.ControlFrame.new()
 	c.turbo = true
 	ArcadeHandling.step(s, state, c, true, 1.0)
-	near(state.turbo, 50.0 - s.turbo_drain, 0.001, "turbo drains while boosting")
+	check(state.ignited, "turbo lights on the first boosted step")
+	near(state.turbo, 50.0 - s.turbo_drain - s.turbo_kick_cost, 0.001, "turbo drains while boosting, plus the kick")
 	c.turbo = false
 	ArcadeHandling.step(s, state, c, true, 1.0)
-	near(state.turbo, 50.0 - s.turbo_drain + s.turbo_regen, 0.001, "turbo regenerates when released")
+	near(state.turbo, 50.0 - s.turbo_drain - s.turbo_kick_cost + s.turbo_regen, 0.001, "turbo regenerates when released")
 	state.turbo = 0.0
 	c.turbo = true
 	ArcadeHandling.step(s, state, c, true, dt)
 	check(not state.boosting, "no boost with an empty meter")
+	# Nitrous kick: lighting the turbo shoves the car forward once, not every step.
+	state = ArcadeHandling.DriveState.new()
+	state.speed = 10.0
+	c = ArcadeHandling.ControlFrame.new()
+	c.turbo = true
+	ArcadeHandling.step(s, state, c, true, dt)
+	check(state.speed >= 10.0 + s.turbo_kick, "turbo kick adds speed when it lights (%.2f m/s)" % state.speed)
+	var after_kick := state.speed
+	ArcadeHandling.step(s, state, c, true, dt)
+	check(state.speed - after_kick < s.turbo_kick * 0.5 and not state.ignited, "the kick happens once per light-up")
+	# Rocket push doesn't fade: near top speed the boost still pulls hard.
+	var pull_fast := ArcadeHandling.step_forward_speed(s, s.max_speed, 1.0, 0.0, true, false, dt) - s.max_speed
+	var pull_plain := ArcadeHandling.step_forward_speed(s, s.max_speed * 0.9, 1.0, 0.0, false, false, dt) - s.max_speed * 0.9
+	check(pull_fast > pull_plain * 2.0, "turbo still pulls hard at top speed (%.3f vs %.3f m/s per step)" % [pull_fast, pull_plain])
+	# Turbo in the air: forward thrust and lift while falling, no lift while rising.
+	state = ArcadeHandling.DriveState.new()
+	state.speed = 5.0
+	state.vertical = -4.0
+	ArcadeHandling.step(s, state, c, false, dt)
+	check(state.boosting, "turbo works in the air")
+	check(state.air_push > s.turbo_air_thrust * dt * 0.99, "air turbo pushes forward")
+	near(state.air_lift, s.turbo_air_lift * dt, 0.0001, "air turbo holds off the fall")
+	state.vertical = 6.0
+	ArcadeHandling.step(s, state, c, false, dt)
+	near(state.air_lift, 0.0, 0.0001, "air turbo adds no lift on the way up")
+	state.speed = s.max_speed * s.turbo_speed_mult
+	ArcadeHandling.step(s, state, c, false, dt)
+	near(state.air_push, 0.0, 0.0001, "air turbo stops pushing at turbo top speed")
+	c.turbo = false
+	ArcadeHandling.step(s, state, c, false, dt)
+	check(not state.boosting and state.air_push == 0.0, "no air push without turbo")
 	# Power slide needs speed, brake and steer.
 	state = ArcadeHandling.DriveState.new()
 	state.speed = 25.0
@@ -221,7 +253,7 @@ func _test_input() -> void:
 	var LT := "axis:%d:+" % JOY_AXIS_TRIGGER_LEFT
 	var RT := "axis:%d:+" % JOY_AXIS_TRIGGER_RIGHT
 	var expected := {
-		"standard": {"accelerate": X, "brake": B, "turbo": Y, "tight_turn": A,
+		"standard": {"accelerate": X, "brake": Y, "turbo": B, "tight_turn": A,
 			"special_next": RB, "special_prev": LB, "fire_special": LT, "fire_gun": RT},
 		"alt1": {"accelerate": A, "brake": LT, "turbo": Y, "tight_turn": RT,
 			"special_next": RB, "special_prev": LB, "fire_special": B, "fire_gun": X},
@@ -515,6 +547,46 @@ func _frames(n: int) -> void:
 		await physics_frame
 
 
+## Drives at the kicker ramp at full throttle and measures the jump. With turbo_in_air,
+## the turbo is held from the moment the car leaves the ramp until it lands.
+func _ramp_jump(turbo_in_air: bool) -> Dictionary:
+	var dt := 1.0 / 60.0
+	var world := _make_pad()
+	_add_ramp(world, Vector3(0, 0, -100), Vector3(0, 2.2, -109), 8.0)
+	var pair := await _spawn_settled(world, Vector3(0, 1.0, 60))
+	var v: ArcadeVehicle = pair[0]
+	var drv: ScriptedDriver = pair[1]
+	drv.frame.throttle = 1.0
+	var out := {"takeoff_speed": 0.0, "distance": -1.0, "airtime": 0.0, "upright": false, "max_tilt": 0.0}
+	var left_ground := false
+	var takeoff := Vector3.ZERO
+	var landed := Vector3.ZERO
+	var t := 0.0
+	while t < 12.0:
+		await physics_frame
+		t += dt
+		if not left_ground and not v.grounded and v.global_position.z < -100.0:
+			left_ground = true
+			takeoff = v.global_position
+			out["takeoff_speed"] = v.linear_velocity.length()
+			drv.frame.turbo = turbo_in_air
+		elif left_ground and v.grounded and landed == Vector3.ZERO:
+			landed = v.global_position
+			drv.frame.turbo = false
+		if left_ground and landed == Vector3.ZERO:
+			out["airtime"] += dt
+		if left_ground:
+			out["max_tilt"] = maxf(out["max_tilt"], rad_to_deg(acos(clampf(v.global_transform.basis.y.y, -1.0, 1.0))))
+		if landed != Vector3.ZERO and v.global_position.z < landed.z - 20.0:
+			break
+	if landed != Vector3.ZERO:
+		out["distance"] = _flat(landed - takeoff).length()
+	out["upright"] = v.global_transform.basis.y.y > 0.9
+	world.queue_free()
+	await _frames(2)
+	return out
+
+
 func _handling_measurements() -> void:
 	var dt := 1.0 / 60.0
 	var stats := GameData.load_vehicle("rustjaw", false)
@@ -570,37 +642,39 @@ func _handling_measurements() -> void:
 	await _frames(2)
 
 	# 5. Jump: a 9 m kicker rising 2.2 m (the Foundry Yard's east-lane ramp) at full throttle.
+	var jump := await _ramp_jump(false)
+	_measure["ramp_takeoff_speed_ms"] = jump["takeoff_speed"]
+	_measure["ramp_jump_distance_m"] = jump["distance"]
+	_measure["ramp_airtime_s"] = jump["airtime"]
+	_measure["upright_after_landing"] = jump["upright"]
+	_measure["max_tilt_in_air_deg"] = jump["max_tilt"]
+	# The same jump with the turbo lit only once the car leaves the ramp.
+	var rocket := await _ramp_jump(true)
+	_measure["ramp_jump_turbo_in_air_m"] = rocket["distance"]
+	_measure["ramp_airtime_turbo_in_air_s"] = rocket["airtime"]
+	check(rocket["distance"] > jump["distance"] + 5.0, "turbo in the air carries a jump further (%.1f m vs %.1f m)" % [rocket["distance"], jump["distance"]])
+	check(rocket["upright"], "lands upright after a turbo jump")
+
+	# 5b. Spring Jack from a standstill, then turbo in the air: the rockets drive you forward.
 	world = _make_pad()
-	_add_ramp(world, Vector3(0, 0, -100), Vector3(0, 2.2, -109), 8.0)
-	pair = await _spawn_settled(world, Vector3(0, 1.0, 60))
+	pair = await _spawn_settled(world, Vector3(0, 1.0, 0))
 	v = pair[0]
 	drv = pair[1]
-	drv.frame.throttle = 1.0
-	var left_ground := false
-	var takeoff := Vector3.ZERO
-	var air_t := 0.0
-	var landed := Vector3.ZERO
-	var max_tilt := 0.0
-	t = 0.0
-	while t < 12.0:
+	var hop_start := v.global_position
+	var lv := v.linear_velocity
+	lv.y = 11.0
+	v.linear_velocity = lv
+	drv.frame.turbo = true
+	await _frames(6)
+	check(not v.grounded, "spring hop leaves the ground")
+	var hop_frames := 0
+	while not v.grounded and hop_frames < 240:
 		await physics_frame
-		t += dt
-		if not left_ground and not v.grounded and v.global_position.z < -100.0:
-			left_ground = true
-			takeoff = v.global_position
-			_measure["ramp_takeoff_speed_ms"] = v.linear_velocity.length()
-		elif left_ground and v.grounded and landed == Vector3.ZERO:
-			landed = v.global_position
-		if left_ground and landed == Vector3.ZERO:
-			air_t += dt
-		if left_ground:
-			max_tilt = maxf(max_tilt, rad_to_deg(acos(clampf(v.global_transform.basis.y.y, -1.0, 1.0))))
-		if landed != Vector3.ZERO and t > 0.0 and v.global_position.z < landed.z - 20.0:
-			break
-	_measure["ramp_jump_distance_m"] = _flat(landed - takeoff).length() if landed != Vector3.ZERO else -1.0
-	_measure["ramp_airtime_s"] = air_t
-	_measure["upright_after_landing"] = v.global_transform.basis.y.y > 0.9
-	_measure["max_tilt_in_air_deg"] = max_tilt
+		hop_frames += 1
+	var hop_forward := -(v.global_position - hop_start).z
+	_measure["standing_hop_turbo_forward_m"] = hop_forward
+	check(hop_forward > 8.0, "turbo drives a standing hop forward (%.1f m)" % hop_forward)
+	drv.frame.turbo = false
 	world.queue_free()
 	await _frames(2)
 

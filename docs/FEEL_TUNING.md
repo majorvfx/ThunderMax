@@ -50,7 +50,10 @@ measurements and tuning sessions, so the handling stays ours.
 | `suspension_hz` | stiffer ride | softer, bouncier ride |
 | `suspension_damping` | settle faster after bumps | bounce more |
 | `turbo_speed_mult` | faster turbo top speed | slower turbo top speed |
-| `turbo_accel_mult` | harder turbo kick | softer turbo kick |
+| `turbo_thrust` | turbo pulls harder (on top of the engine, doesn't fade with speed) | softer pull |
+| `turbo_kick` | bigger shove the moment turbo lights | smaller shove |
+| `turbo_air_thrust` | turbo drives you forward harder in the air | weaker push in the air |
+| `turbo_air_lift` | turbo holds you up longer when falling (longer jumps) | drops sooner |
 
 ## Frame rate and feel
 

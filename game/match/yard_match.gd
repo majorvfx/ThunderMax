@@ -224,9 +224,11 @@ func _on_drone_wrecked(drone: ArcadeVehicle, killer: Node) -> void:
 		hud.message(WRECK_LINES[_rng.randi() % WRECK_LINES.size()] % drone.stats.display_name)
 	get_tree().create_timer(DRONE_RESPAWN, false).timeout.connect(func():
 		var route: Array[Vector3] = arena.drone_routes[drones.find(drone) % arena.drone_routes.size()]
+		var at := _rng.randi() % route.size()
 		var d := drone.driver as DroneDriver
-		d.index = _rng.randi() % route.size()
-		drone.respawn(_route_transform(route, d.index)))
+		if d != null:   # tools and tests sometimes drive a drone with a scripted driver
+			d.index = at
+		drone.respawn(_route_transform(route, at)))
 
 
 func _on_player_wrecked(_v: ArcadeVehicle, _killer: Node) -> void:

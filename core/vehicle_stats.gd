@@ -62,8 +62,12 @@ var ram_armor := 1.0             ## damage taken divisor when rammed
 var turbo_capacity := 100.0
 var turbo_drain := 35.0          ## per second while boosting
 var turbo_regen := 4.0           ## per second when not boosting
-var turbo_speed_mult := 1.35
-var turbo_accel_mult := 1.8
+var turbo_speed_mult := 1.4      ## top speed multiplier while boosting
+var turbo_thrust := 18.0         ## m/s^2 rocket push on top of the engine; doesn't fade with speed
+var turbo_kick := 4.0            ## m/s shove the moment the turbo lights (the nitrous hit)
+var turbo_kick_cost := 6.0       ## meter spent on each light-up, so tapping isn't free
+var turbo_air_thrust := 16.0     ## m/s^2 forward push from the rocket while airborne
+var turbo_air_lift := 7.0        ## m/s^2 upward push while falling, so a boosted jump carries further
 
 ## Numbers exposed in the in-game tuning panel: [key, min, max, step]
 const TUNABLE := [
@@ -90,7 +94,10 @@ const TUNABLE := [
 	["suspension_hz", 0.8, 5.0, 0.1],
 	["suspension_damping", 0.1, 1.5, 0.05],
 	["turbo_speed_mult", 1.0, 2.0, 0.05],
-	["turbo_accel_mult", 1.0, 3.0, 0.1],
+	["turbo_thrust", 0.0, 60.0, 1.0],
+	["turbo_kick", 0.0, 15.0, 0.5],
+	["turbo_air_thrust", 0.0, 40.0, 1.0],
+	["turbo_air_lift", 0.0, 15.0, 0.5],
 ]
 
 

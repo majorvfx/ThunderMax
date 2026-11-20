@@ -48,7 +48,11 @@
     "turbo_capacity": 100.0,
     "turbo_drain": 35.0,
     "turbo_regen": 4.0,
-    "turbo_speed_mult": 1.35,
-    "turbo_accel_mult": 1.8
+    "turbo_speed_mult": 1.4,
+    "turbo_thrust": 18.0,
+    "turbo_kick": 4.0,
+    "turbo_kick_cost": 6.0,
+    "turbo_air_thrust": 16.0,
+    "turbo_air_lift": 7.0
   }
 }

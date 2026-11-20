@@ -8,8 +8,10 @@ extends RefCounted
 ## same math ports line for line to C++ or Blueprint.
 ##
 ## Feel goals (our own design): instant throttle, tight turns that loosen a little
-## at speed, cars that stay planted, a brake-and-steer power slide, and digital
-## steering that ramps in over a fraction of a second instead of snapping.
+## at speed, cars that stay planted, a brake-and-steer power slide, digital
+## steering that ramps in over a fraction of a second instead of snapping, and a
+## turbo that behaves like a rocket: a nitrous kick when it lights, a push that
+## doesn't fade with speed, and thrust that still drives you forward in the air.
 
 
 ## Driver intent for one physics step. Filled by a player pad, keyboard or bot.
@@ -40,21 +42,44 @@ class DriveState:
 	var lateral := 0.0         ## sideways slide speed (m/s), + = right
 	var steer := 0.0           ## smoothed steering value actually used
 	var yaw_rate := 0.0        ## target yaw rate (rad/s), + = turning left
+	var vertical := 0.0        ## world up speed (m/s); set by the engine layer, read in the air
 	var drifting := false
 	var boosting := false
 	var turbo := 100.0         ## turbo meter
+	var ignited := false       ## true on the step the turbo lights
+	var air_push := 0.0        ## forward m/s the rocket adds this step while airborne
+	var air_lift := 0.0        ## upward m/s the rocket adds this step while falling
 
 
 ## Advances the drive state by dt. `grounded` is false while airborne.
 static func step(s: VehicleStats, st: DriveState, c: ControlFrame, grounded: bool, dt: float) -> void:
 	st.steer = step_steer(s, st.steer, c.steer, c.steer_digital, dt)
 
-	# Turbo meter: boost only with fuel, on the ground.
-	st.boosting = c.turbo and st.turbo > 0.0 and grounded
+	# Turbo meter: the rocket burns fuel on the ground and in the air.
+	var was_boosting := st.boosting
+	st.boosting = c.turbo and st.turbo > 0.0
+	st.ignited = st.boosting and not was_boosting
 	if st.boosting:
 		st.turbo = maxf(0.0, st.turbo - s.turbo_drain * dt)
 	elif not c.turbo:
 		st.turbo = minf(s.turbo_capacity, st.turbo + s.turbo_regen * dt)
+	# Nitrous kick: a shove forward when the turbo lights. It costs a slug of the
+	# meter, so tapping the button over and over isn't free speed.
+	var kick := 0.0
+	if st.ignited and st.turbo >= s.turbo_kick_cost:
+		st.turbo -= s.turbo_kick_cost
+		kick = s.turbo_kick
+	var boost_top := s.max_speed * s.turbo_speed_mult
+	if kick > 0.0 and st.speed < boost_top:
+		kick = minf(kick, boost_top - st.speed)
+	else:
+		kick = 0.0
+	st.air_push = 0.0
+	st.air_lift = 0.0
+	if st.boosting and not grounded:
+		var push := air_thrust(s, st.speed, st.vertical, dt)
+		st.air_push = push.x + kick
+		st.air_lift = push.y
 
 	# Tight turn: hold the button and steer to swing the car round, sliding at speed.
 	var tight := grounded and c.tight_turn and absf(st.steer) > 0.2 and absf(st.speed) > 2.0
@@ -63,7 +88,7 @@ static func step(s: VehicleStats, st: DriveState, c: ControlFrame, grounded: boo
 	st.drifting = grounded and (power_slide or tight) and st.speed > s.drift_min_speed
 
 	if grounded:
-		st.speed = step_forward_speed(s, st.speed, c.throttle, c.brake, st.boosting, st.drifting, dt)
+		st.speed = step_forward_speed(s, st.speed + kick, c.throttle, c.brake, st.boosting, st.drifting, dt)
 		if tight:
 			st.speed = move_toward(st.speed, 0.0, s.tight_turn_drag * dt)
 		st.lateral = step_lateral(s, st.lateral, st.drifting, dt)
@@ -75,13 +100,26 @@ static func step(s: VehicleStats, st: DriveState, c: ControlFrame, grounded: boo
 	st.yaw_rate = yaw
 
 
+## Rocket thrust while airborne: (forward m/s, upward m/s) to add this step.
+## Forward thrust tops out at turbo top speed. Lift only works against a fall, so
+## the turbo stretches a jump out without launching you any higher.
+static func air_thrust(s: VehicleStats, speed: float, vertical: float, dt: float) -> Vector2:
+	var top := s.max_speed * s.turbo_speed_mult
+	var forward := clampf(top - speed, 0.0, s.turbo_air_thrust * dt)
+	var up := 0.0
+	if vertical < 0.0:
+		up = minf(s.turbo_air_lift * dt, -vertical)
+	return Vector2(forward, up)
+
+
 ## Forward speed update: throttle, brake, reverse, coast, turbo.
 static func step_forward_speed(s: VehicleStats, speed: float, throttle: float, brake: float, boosting: bool, drifting: bool, dt: float) -> float:
 	var vmax := s.max_speed
 	var acc := s.accel
+	var thrust := 0.0
 	if boosting:
 		vmax *= s.turbo_speed_mult
-		acc *= s.turbo_accel_mult
+		thrust = s.turbo_thrust   # the rocket's push doesn't fade as you speed up
 		throttle = 1.0
 
 	# Brake pedal: slow down while rolling forward, reverse once stopped.
@@ -100,8 +138,8 @@ static func step_forward_speed(s: VehicleStats, speed: float, throttle: float, b
 			return minf(0.0, speed + s.brake_decel * throttle * dt)
 		var target := vmax * clampf(throttle, 0.0, 1.0)
 		if speed < target:
-			var t := clampf(speed / vmax, 0.0, 1.0)
-			var a := acc * (1.0 - s.accel_falloff * t * t)
+			var t := clampf(speed / s.max_speed, 0.0, 1.0)
+			var a := acc * (1.0 - s.accel_falloff * t * t) + thrust
 			return minf(target, speed + a * dt)
 		# Above target (turbo ended, partial throttle, downhill): ease back.
 		return move_toward(speed, target, s.coast_decel * 2.0 * dt)

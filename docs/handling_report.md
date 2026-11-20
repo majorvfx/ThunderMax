@@ -19,6 +19,9 @@ Targets are our own design windows from `data/handling_targets.json`.
 | ramp_airtime_s | 1.17 |  |
 | upright_after_landing | true |  |
 | max_tilt_in_air_deg | 13.69 |  |
+| ramp_jump_turbo_in_air_m | 55.53 |  |
+| ramp_airtime_turbo_in_air_s | 1.38 |  |
+| standing_hop_turbo_forward_m | 27.74 |  |
 | ram_damage_to_parked | 10.42 |  |
 | ram_damage_to_rammer | 10.42 |  |
 | stays_upright_after_ram | true | true |
@@ -26,8 +29,8 @@ Targets are our own design windows from `data/handling_targets.json`.
 | spring_jack_height_m | 3.95 |  |
 | fire_jug_range_m | 19.85 |  |
 | rivet_storm_damage_per_s | 34.78 |  |
-| drone_1_travel_25s_m | 357.78 |  |
-| drone_2_travel_25s_m | 383.84 |  |
-| drone_3_travel_25s_m | 425.92 |  |
-| drones_first_hit_on_player_s | 5.22 |  |
-| time_to_wreck_drone_s | 1.77 |  |
+| drone_1_travel_25s_m | 329.34 |  |
+| drone_2_travel_25s_m | 330.23 |  |
+| drone_3_travel_25s_m | 433.41 |  |
+| drones_first_hit_on_player_s | 1.53 |  |
+| time_to_wreck_drone_s | 2.35 |  |
