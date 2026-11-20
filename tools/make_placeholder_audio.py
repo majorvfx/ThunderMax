@@ -217,6 +217,35 @@ def nitro():
     return pop + rush + whoosh
 
 
+def hook():
+    # Harpoon: a sharp twang, then chain rattling out.
+    n = int(0.6 * RATE)
+    t = t_axis(0.6)
+    twang = np.sin(2 * np.pi * (520 - 300 * t) * t) * env(n, 0.001, 4.0) * 0.6
+    rattle = lowpass(rng.normal(0, 1, n), 4000) * ((t % 0.04) < 0.012) * env(n, 0.01, 1.2)
+    clank = sum(np.sin(2 * np.pi * f * t) * a for f, a in [(870, 1.0), (1730, 0.5), (2610, 0.3)]) * ((t % 0.09) < 0.01) * 0.4
+    return twang + rattle + clank
+
+
+def sawblade():
+    # Blade spinning up: a metallic whine over grinding grit.
+    n = int(0.7 * RATE)
+    t = t_axis(0.7)
+    whine = saw(600 + 900 * t, t)
+    grit = lowpass(rng.normal(0, 1, n), 6000) * (rng.random(n) > 0.9) * 0.8
+    return (lowpass(whine, 4000) * 0.5 + grit) * env(n, 0.02, 1.3)
+
+
+def slam():
+    # Dead Weight: a huge concrete thud with a ground rumble and a metal ring.
+    n = int(1.4 * RATE)
+    t = t_axis(1.4)
+    thud = np.sin(2 * np.pi * (48 - 20 * t) * t) * env(n, 0.002, 2.5) * 1.6
+    rumble = lowpass(rng.normal(0, 1, n), 220) * env(n, 0.01, 1.8) * 2.0
+    ring = sum(np.sin(2 * np.pi * f * t) * a for f, a in [(140, 1.0), (377, 0.5), (811, 0.25)]) * env(n, 0.001, 3.0) * 0.3
+    return thud + rumble + ring
+
+
 def music_yard():
     """A 32-second dark industrial loop at 90 bpm in D minor: drone, pulse, metal hits."""
     bpm = 90.0
@@ -296,6 +325,9 @@ def main():
     save("overdrive", overdrive(), 0.7)
     save("thruster", thruster(), 0.7)
     save("nitro", nitro(), 0.8)
+    save("hook", hook(), 0.8)
+    save("saw", sawblade(), 0.7)
+    save("slam", slam(), 0.95)
 
 
 if __name__ == "__main__":

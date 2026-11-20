@@ -1,10 +1,11 @@
 class_name YardMatch
 extends Node3D
-## Milestone 1 sandbox: Rustjaw vs. Scrap Drones in the Foundry Yard.
+## The Foundry Yard sandbox: your car vs. Scrap Drones.
 ## Wreck drones, grab pickups, tune the handling. Drones respawn; so do you.
 
 signal quit_to_title
 signal restart_requested
+signal change_car_requested
 
 const DRONE_COUNT := 3
 const DRONE_RESPAWN := 5.0
@@ -35,6 +36,7 @@ var mirror: RearMirror
 var governor: FrameGovernor
 var drones: Array[ArcadeVehicle] = []
 var wrecks := 0
+var player_car := ""   ## car id; empty uses the one chosen on the select screen
 var _ui: CanvasLayer
 var _rng := RandomNumberGenerator.new()
 
@@ -53,7 +55,12 @@ func _ready() -> void:
 	add_child(governor)
 
 	player_driver = PlayerDriver.new(1, -1)
-	player = VehicleFactory.create("rustjaw", player_driver, true)
+	if player_car == "":
+		player_car = GameSettings.car
+	player = VehicleFactory.create(player_car, player_driver, true)
+	if player == null:
+		player_car = "rustjaw"
+		player = VehicleFactory.create(player_car, player_driver, true)
 	add_child(player)
 	player.global_transform = arena.player_spawn
 	player.reset_physics_interpolation()
@@ -97,6 +104,7 @@ func _build_ui() -> void:
 	_ui.add_child(pause_menu)
 	pause_menu.restart_requested.connect(_restart)
 	pause_menu.quit_requested.connect(_quit)
+	pause_menu.change_car_requested.connect(_change_car)
 	pause_menu.settings_changed.connect(_apply_quality)
 	mirror = RearMirror.new()
 	mirror.target = player
@@ -281,6 +289,11 @@ func _on_joy_changed(device: int, connected: bool) -> void:
 func _restart() -> void:
 	get_tree().paused = false
 	restart_requested.emit()
+
+
+func _change_car() -> void:
+	get_tree().paused = false
+	change_car_requested.emit()
 
 
 func _quit() -> void:

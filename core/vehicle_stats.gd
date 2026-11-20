@@ -50,6 +50,11 @@ var air_control := 0.3
 var air_upright := 3.0
 var upright_strength := 8.0
 var mass := 1400.0
+var body_width := 1.9            ## collision box (m)
+var body_height := 0.75
+var body_length := 4.3
+var wheel_track := 0.85          ## wheel distance from the centre line (m)
+var wheel_base := 1.3            ## wheel distance from the middle, front and back (m)
 var ride_height := 0.6           ## suspension rest length (m)
 var suspension_hz := 2.2
 var suspension_damping := 0.55
@@ -113,7 +118,8 @@ func apply_dict(d: Dictionary) -> void:
 	for key in d.keys():
 		var value: Variant = d[key]
 		if typeof(value) == TYPE_DICTIONARY:
-			apply_dict(value)
+			if String(key) != "signature":   # the car's own special is read by SpecialWeapons
+				apply_dict(value)
 			continue
 		var k := String(key)
 		if k == "name":

@@ -3,10 +3,10 @@
 An original vehicular-combat arena game: dark, serious, with a little dark humor.
 Built in Godot 4, structured so the game rules and data can move to Unreal later.
 
-This build is **Milestone 1 (first playable)** plus the first part of **Milestone 2 (core
-combat)**: one car, one arena, the machine gun, D-pad combo moves with an energy meter, pickup
-special weapons, drones that fight back, Xbox controller support, and the arcade handling model
-with a live tuning panel. All art and audio are placeholders made in code.
+This build is **Milestone 1 (first playable)** plus most of **Milestone 2 (core combat)**: four
+cars with their own specials, one arena, the machine gun, D-pad combo moves with an energy
+meter, pickup special weapons, drones that fight back, Xbox controller support, and the arcade
+handling model with a live tuning panel. All art and audio are placeholders made in code.
 
 ![Title](docs/screenshots/title.png)
 
@@ -20,9 +20,37 @@ To skip the editor, run the game directly:
 `Godot_v4.7.2-stable_win64.exe --path "C:\path\to\ThunderMax"` (a `.bat` file with that line
 works as a desktop shortcut).
 
-Press **A** or **Enter** on the title screen. You start in the Foundry Yard in Rustjaw, with
-three Scrap Drones running laps. Get close and they turn on you. Wreck them, grab pickups and
-weapon crates, set off the fuel drums.
+Press **A** or **Enter** on the title screen, pick a car (left / right, then **A**), and you
+start in the Foundry Yard with three Scrap Drones running laps. Get close and they turn on you.
+Wreck them, grab pickups and weapon crates, set off the fuel drums. Your car is remembered for
+next time; **Change car** in the pause menu goes back to the select screen.
+
+## Cars
+
+![Car select](docs/screenshots/car_select.png)
+
+| Car | Class | Armor | Top speed | Own special |
+| --- | --- | --- | --- | --- |
+| **Rustjaw**: a plow-nosed coupe welded from three dead sedans | Medium | 100 | 30 m/s | **Slag Hook**: a barbed harpoon on a chain that hooks the car ahead and drags it onto your plow |
+| **Cinder**: a stripped dune buggy, all roll cage and fuel cell | Light | 70 | 34 m/s | **Ember Fan**: five little rockets in a fan; each one sets a brief fire |
+| **Hogshead**: a fuel tanker poured full of concrete | Heavy | 150 | 25 m/s | **Dead Weight**: drops the tank on its jacks; cars within 12 m are hurt and thrown clear |
+| **Sawback**: a street sweeper with blades where the brushes were | Medium | 110 | 28 m/s | **Ripsaw**: a spinning blade that runs along the ground and bounces off walls three times |
+
+Each car's own special sits in the special weapon list alongside the pickups, holds one shot and
+recharges on its own (12 to 16 seconds; the thin bar under the special panel). It's selected
+when you start. Pick up a weapon crate and the new weapon is selected; cycle back to your own
+with previous / next special, and it comes back by itself when the pickups run out. Tailgunner
+fires it out the back like any other special. Slag Hook, Ember Fan and Ripsaw bend slightly toward
+a target ahead, like the Firebrand.
+
+Every car's numbers and its special live in `data/vehicles/<car>.json`, and the select screen
+order in `data/roster.json`, so new cars are mostly data.
+
+| Slag Hook | Ember Fan |
+| --- | --- |
+| ![Slag Hook](docs/screenshots/sig_slag_hook.png) | ![Ember Fan](docs/screenshots/sig_ember_fan.png) |
+| **Dead Weight** | **Ripsaw** |
+| ![Dead Weight](docs/screenshots/sig_dead_weight.png) | ![Ripsaw](docs/screenshots/sig_ripsaw.png) |
 
 ## Controls
 
@@ -151,6 +179,7 @@ to the right stick.
 
 ## What's in Milestone 2 so far
 
+- **Four cars**, each with its own recharging special, and a car select screen (see **Cars**).
 - **Eight combo moves** on the D-pad with an energy meter, including a held long code (see above).
 - **Three special weapons** from weapon crates, with ammo per weapon and cycling.
 - **Status effects**: shielded, frozen, burning, cloaked and Rivet Storm, shown on the car and
@@ -163,8 +192,8 @@ to the right stick.
   drop mines or fire a Tailgunner round when you chase them, raise Bulwark when hurt, and throw
   Cold Snaps. They lose you while you're under Blackout.
 
-Still to come in Milestone 2: more cars with their own specials, a second arena with
-destructible scenery, and bot difficulty levels.
+Still to come in Milestone 2: a second arena with destructible scenery, and bot difficulty
+levels.
 
 ![Cold Snap](docs/screenshots/cold_snap.png)
 

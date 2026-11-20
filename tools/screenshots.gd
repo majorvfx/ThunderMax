@@ -25,6 +25,13 @@ func _run() -> void:
 	await _sim(0.3)
 	_save("title")
 	t.queue_free()
+	var cs := CarSelect.new()
+	root.add_child(cs)
+	await _sim(0.2)
+	cs._show(cs.cars.find("hogshead"))
+	await _sim(1.2)
+	_save("car_select")
+	cs.queue_free()
 
 	var m := YardMatch.new()
 	root.add_child(m)
@@ -147,7 +154,38 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	_save("tuning_panel")
+	m.tuning.close_panel()
+	m.queue_free()
+	await _sim(0.2)
+	# Each car's own special, fired at a drone in the west lane.
+	for shot in [["rustjaw", "sig_slag_hook", 0.18, 20.0], ["cinder", "sig_ember_fan", 0.2, 22.0],
+			["hogshead", "sig_dead_weight", 0.2, 7.0], ["sawback", "sig_ripsaw", 0.42, 20.0]]:
+		await _signature_shot(shot[0], shot[1], shot[2], shot[3])
 	quit()
+
+
+func _signature_shot(car: String, shot: String, after: float, gap: float) -> void:
+	var m := YardMatch.new()
+	m.player_car = car
+	root.add_child(m)
+	await _sim(1.0)
+	var drv := ScriptedDriver.new()
+	m.player.driver = drv
+	var drone: ArcadeVehicle = m.drones[0]
+	drone.driver = ScriptedDriver.new()
+	drone.global_transform = Transform3D(Basis(Vector3.UP, 1.2), Vector3(-55 + (2.0 if gap < 10.0 else 1.5), 1.2, 20 - gap))
+	drone.linear_velocity = Vector3.ZERO
+	drone.reset_physics_interpolation()
+	m.player.global_transform = Transform3D(Basis.IDENTITY, Vector3(-55, 1.2, 20))
+	m.player.linear_velocity = Vector3.ZERO
+	m.player.reset_physics_interpolation()
+	m.camera.snap()
+	await _sim(0.8)
+	m.player.specials.fire()
+	await _sim(after)
+	_save(shot)
+	m.queue_free()
+	await _sim(0.2)
 
 
 func _save(shot: String) -> void:

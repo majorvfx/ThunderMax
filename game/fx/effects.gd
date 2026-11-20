@@ -176,3 +176,49 @@ static func smog_burst(parent: Node, pos: Vector3) -> void:
 	p.scale_amount_min = 0.6
 	p.scale_amount_max = 1.4
 	p.color_ramp = _ramp([Color(0.16, 0.15, 0.14, 0.6), Color(0.2, 0.19, 0.18, 0.35), Color(0.25, 0.24, 0.22, 0.0)])
+
+
+## Dead Weight: a ring of dust and grit that races out across the ground.
+static func shockwave(parent: Node, pos: Vector3, radius: float) -> void:
+	if parent == null or not parent.is_inside_tree():
+		return
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mat.albedo_color = Color(0.55, 0.45, 0.35, 0.7)
+	var ring := MeshInstance3D.new()
+	var torus := TorusMesh.new()
+	torus.inner_radius = 0.85
+	torus.outer_radius = 1.0
+	torus.rings = 24
+	torus.ring_segments = 6
+	torus.material = mat
+	ring.mesh = torus
+	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	ring.position = pos + Vector3.UP * 0.3
+	ring.scale = Vector3(0.5, 0.6, 0.5)
+	parent.add_child(ring)
+	var tw := ring.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(ring, "scale", Vector3(radius, 1.4, radius), 0.45).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	tw.tween_property(mat, "albedo_color:a", 0.0, 0.5)
+	tw.chain().tween_callback(ring.queue_free)
+
+	var dust := _burst(parent, pos + Vector3.UP * 0.3, 30, 1.2, _particle_material("smoke", Color(0.12, 0.11, 0.1), 0.0), 1.6)
+	dust.emission_shape = CPUParticles3D.EMISSION_SHAPE_RING
+	dust.emission_ring_axis = Vector3.UP
+	dust.emission_ring_radius = 1.5
+	dust.emission_ring_inner_radius = 1.0
+	dust.emission_ring_height = 0.2
+	dust.direction = Vector3(1, 0.2, 0)
+	dust.spread = 180.0
+	dust.flatness = 0.85
+	dust.initial_velocity_min = radius * 0.8
+	dust.initial_velocity_max = radius * 1.3
+	dust.damping_min = radius * 0.8
+	dust.damping_max = radius * 1.2
+	dust.scale_amount_min = 0.8
+	dust.scale_amount_max = 1.8
+	dust.color_ramp = _ramp([Color(0.45, 0.38, 0.3, 0.8), Color(0.3, 0.26, 0.22, 0.5), Color(0.2, 0.18, 0.16, 0.0)])
+	sparks(parent, pos, Vector3.UP)
