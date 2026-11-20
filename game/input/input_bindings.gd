@@ -29,6 +29,7 @@ const LABELS := {
 	"combo_down": "Combo down",
 	"combo_left": "Combo left",
 	"combo_right": "Combo right",
+	"combo_hold": "Combo hold",
 }
 
 const _BUTTON_NAMES := {

@@ -46,6 +46,9 @@ func _build_visual() -> void:
 			size = Vector3(0.4, 0.4, 1.3)
 		"firebrand":
 			col = Color(1.0, 0.6, 0.15)
+		"tailgunner":
+			col = Color(1.0, 0.75, 0.3)
+			size = Vector3(0.32, 0.32, 1.0)
 	var m := StandardMaterial3D.new()
 	m.albedo_color = col
 	m.emission_enabled = true
@@ -87,6 +90,8 @@ func _physics_process(delta: float) -> void:
 	if homing_target != null and is_instance_valid(homing_target) and turn_rate > 0.0:
 		if homing_target.has_method("is_alive") and not homing_target.is_alive():
 			homing_target = null
+		elif homing_target is ArcadeVehicle and (homing_target as ArcadeVehicle).status.is_cloaked():
+			homing_target = null   # Blackout breaks the lock
 		else:
 			var want := (homing_target.global_position + Vector3.UP * 0.3 - global_position).normalized()
 			var speed := velocity.length()

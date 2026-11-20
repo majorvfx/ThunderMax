@@ -10,14 +10,17 @@ const ACTIONS := [
 	"accelerate", "brake", "steer_left", "steer_right",
 	"fire_gun", "fire_special", "special_prev", "special_next",
 	"turbo", "look_back", "pause", "tuning", "debug",
-	"combo_up", "combo_down", "combo_left", "combo_right",
+	"combo_up", "combo_down", "combo_left", "combo_right", "combo_hold",
 ]
 
-const PRESETS := ["modern", "classic"]
+const PRESETS := ["classic", "modern"]
+
+## The default: the D-pad steers and enters combo moves, driving is on the face buttons.
+const DEFAULT_PRESET := "classic"
 
 const PRESET_NAMES := {
+	"classic": "Classic (D-pad steering)",
 	"modern": "Modern (triggers)",
-	"classic": "Classic (face buttons)",
 }
 
 ## What each control does per preset, for menus and the README.
@@ -26,20 +29,20 @@ const PRESET_HELP := {
 		["Accelerate", "RT"], ["Brake / reverse", "LT"], ["Steer", "Left stick"],
 		["Machine gun", "RB"], ["Special weapon", "X"], ["Turbo", "A"],
 		["Look back", "B"], ["Cycle specials", "LB / Y"],
-		["Combo moves", "D-pad"], ["Pause", "Menu"], ["Tuning panel", "View"],
+		["Combo moves", "D-pad (hold RT for held moves)"], ["Pause", "Menu"], ["Tuning panel", "View"],
 	],
 	"classic": [
 		["Accelerate", "A"], ["Brake / reverse", "X"], ["Steer", "D-pad or left stick"],
 		["Machine gun", "B"], ["Special weapon", "Y"], ["Turbo", "LT"],
 		["Look back", "RT"], ["Cycle specials", "LB / RB"],
-		["Combo moves", "D-pad"], ["Pause", "Menu"], ["Tuning panel", "View"],
+		["Combo moves", "D-pad (hold RT for held moves)"], ["Pause", "Menu"], ["Tuning panel", "View"],
 	],
 }
 
 const KEYBOARD_HELP := [
 	["Accelerate", "W / Up"], ["Brake / reverse", "S / Down"], ["Steer", "A D / Left Right"],
 	["Machine gun", "Space"], ["Special weapon", "F"], ["Turbo", "Shift"],
-	["Look back", "C"], ["Cycle specials", "Q / E"], ["Combo moves", "I J K L"], ["Pause", "Esc"],
+	["Look back", "C"], ["Cycle specials", "Q / E"], ["Combo moves", "I J K L (hold Ctrl for held moves)"], ["Pause", "Esc"],
 	["Tuning panel", "F1"], ["Debug readout", "F3"],
 ]
 
@@ -62,6 +65,7 @@ static func apply_preset(slot: int, device: int, preset: String, with_keyboard: 
 		InputMap.action_set_deadzone(act, STICK_DEADZONE)
 	InputMap.action_set_deadzone(action(slot, "accelerate"), TRIGGER_DEADZONE)
 	InputMap.action_set_deadzone(action(slot, "brake"), TRIGGER_DEADZONE)
+	InputMap.action_set_deadzone(action(slot, "combo_hold"), 0.5)
 
 	# Shared by both presets.
 	_axis(slot, "steer_left", device, JOY_AXIS_LEFT_X, -1.0)
@@ -73,6 +77,9 @@ static func apply_preset(slot: int, device: int, preset: String, with_keyboard: 
 	_button(slot, "combo_down", device, JOY_BUTTON_DPAD_DOWN)
 	_button(slot, "combo_left", device, JOY_BUTTON_DPAD_LEFT)
 	_button(slot, "combo_right", device, JOY_BUTTON_DPAD_RIGHT)
+	# Held moves (like Rivet Storm) need RT held while the D-pad code goes in. RT also
+	# accelerates (Modern) or looks back (Classic); the combo only reads it as a modifier.
+	_axis(slot, "combo_hold", device, JOY_AXIS_TRIGGER_RIGHT, 1.0)
 
 	if preset == "classic":
 		_button(slot, "accelerate", device, JOY_BUTTON_A)
@@ -113,6 +120,7 @@ static func apply_preset(slot: int, device: int, preset: String, with_keyboard: 
 		_keys(slot, "combo_down", [KEY_K])
 		_keys(slot, "combo_left", [KEY_J])
 		_keys(slot, "combo_right", [KEY_L])
+		_keys(slot, "combo_hold", [KEY_CTRL])
 
 
 static func _button(slot: int, name: String, device: int, button: JoyButton) -> void:

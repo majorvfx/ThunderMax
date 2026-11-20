@@ -156,3 +156,23 @@ static func frost_burst(parent: Node, pos: Vector3) -> void:
 	p.initial_velocity_max = 6.0
 	p.gravity = Vector3(0, -6, 0)
 	p.color_ramp = _ramp([Color(0.9, 0.97, 1.0, 1.0), Color(0.5, 0.8, 1.0, 0.0)])
+
+
+## Black smog cloud for Blackout.
+static func smog_burst(parent: Node, pos: Vector3) -> void:
+	if parent == null or not parent.is_inside_tree():
+		return
+	var p := _burst(parent, pos + Vector3.UP * 0.6, 22, 1.4, _particle_material("smoke", Color(0.12, 0.11, 0.1), 0.0), 1.1)
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	p.emission_sphere_radius = 1.4
+	p.explosiveness = 0.85
+	p.direction = Vector3.UP
+	p.spread = 180.0
+	p.initial_velocity_min = 1.5
+	p.initial_velocity_max = 4.0
+	p.gravity = Vector3(0, 0.8, 0)
+	p.damping_min = 1.5
+	p.damping_max = 2.5
+	p.scale_amount_min = 0.6
+	p.scale_amount_max = 1.4
+	p.color_ramp = _ramp([Color(0.16, 0.15, 0.14, 0.6), Color(0.2, 0.19, 0.18, 0.35), Color(0.25, 0.24, 0.22, 0.0)])

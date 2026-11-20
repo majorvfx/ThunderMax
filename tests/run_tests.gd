@@ -220,6 +220,13 @@ func _test_input() -> void:
 		if ev is InputEventJoypadButton and ev.button_index == JOY_BUTTON_A:
 			a_btn = true
 	check(a_btn, "classic: A accelerates")
+	check(InputSetup.DEFAULT_PRESET == "classic" and InputSetup.PRESETS[0] == "classic", "the D-pad layout is the default")
+	for dir in ["left", "right"]:
+		var code := "btn:%d" % (JOY_BUTTON_DPAD_LEFT if dir == "left" else JOY_BUTTON_DPAD_RIGHT)
+		check(_has_code("steer_" + dir, code) and _has_code("combo_" + dir, code), "classic: D-pad %s steers and enters combos" % dir)
+	for preset in InputSetup.PRESETS:
+		InputSetup.apply_preset(1, -1, preset, true)
+		check(_has_code("combo_hold", "axis:%d:+" % JOY_AXIS_TRIGGER_RIGHT), "%s: RT is the combo hold" % preset)
 	InputSetup.apply_preset(1, -1, "modern", true)
 
 
@@ -311,9 +318,10 @@ func _test_combo_buffer() -> void:
 	var t := 10.0
 	for id in moves:
 		var got := ""
+		var hold := bool(moves[id].get("hold", false))
 		for d in moves[id]["inputs"]:
 			t += 0.1
-			got = b.push(d, t)
+			got = b.push(d, t, hold)
 		check(got == id, "combo buffer recognises %s" % id)
 		check(b.pending().is_empty(), "combo buffer clears after %s" % id)
 		t += 1.0
@@ -328,6 +336,31 @@ func _test_combo_buffer() -> void:
 		if b.push(["left", "right"][i % 2], 30.0 + i * 0.1) != "":
 			fired = true
 	check(not fired, "left/right steering taps fire nothing")
+	# Held moves: Rivet Storm needs the hold control, and with it held the long code
+	# never sets off a short move partway through.
+	var storm: Array = moves["rivet_storm"]["inputs"]
+	check(storm.size() == 8 and bool(moves["rivet_storm"]["hold"]), "Rivet Storm is the long held code")
+	b.reset()
+	var fired_ids: Array[String] = []
+	for i in storm.size():
+		var id := b.push(storm[i], 40.0 + i * 0.1, false)
+		if id != "":
+			fired_ids.append(id)
+	check(not ("rivet_storm" in fired_ids), "Rivet Storm doesn't fire without the hold")
+	b.reset()
+	fired_ids.clear()
+	for i in storm.size():
+		var id := b.push(storm[i], 50.0 + i * 0.1, true)
+		if id != "":
+			fired_ids.append(id)
+	check(fired_ids == ["rivet_storm"], "held: the long code fires only Rivet Storm (got %s)" % str(fired_ids))
+	# Holding RT (it accelerates in Modern) doesn't block the short moves.
+	b.reset()
+	var napalm: Array = moves["fire_jug"]["inputs"]
+	var got_napalm := ""
+	for i in napalm.size():
+		got_napalm = b.push(napalm[i], 60.0 + i * 0.1, true)
+	check(got_napalm == "fire_jug", "short moves still fire while RT is held")
 	# Longest sequence wins when two moves end on the same presses.
 	var nested := ComboBuffer.new()
 	nested.configure({"short": {"inputs": ["down", "up"]}, "long": {"inputs": ["down", "down", "up"]}}, 0.45)
@@ -364,6 +397,14 @@ func _test_status_effects() -> void:
 	check(not st.is_frozen() and not st.is_burning(), "the shield blocks freeze and fire")
 	st.tick(2.1)
 	check(not st.is_shielded(), "the shield wears off")
+	st.cloak(4.0)
+	check(st.is_cloaked(), "Blackout cloaks")
+	st.reveal()
+	check(not st.is_cloaked(), "firing reveals a cloaked car")
+	st.overdrive(1.0)
+	check(st.is_overdriven(), "Rivet Storm overdrives the guns")
+	st.tick(1.1)
+	check(not st.is_overdriven(), "Rivet Storm wears off")
 
 
 # --- Handling on a test pad -----------------------------------------------------------
@@ -599,10 +640,13 @@ func _fmt(x: Variant) -> String:
 # --- Combo moves and specials -----------------------------------------------------------
 
 ## Taps a D-pad sequence the way a player would: one press every few physics steps.
-func _tap(drv: ScriptedDriver, seq: Array) -> void:
+## `hold` keeps the combo hold control (RT) down while the code goes in.
+func _tap(drv: ScriptedDriver, seq: Array, hold: bool = false) -> void:
+	drv.frame.combo_hold = hold
 	for d in seq:
 		drv.frame.combo_presses.append(d)
 		await _frames(4)
+	drv.frame.combo_hold = false
 
 
 func _inputs(id: String) -> Array:
@@ -736,6 +780,78 @@ func _combo_moves() -> void:
 	target.reset_physics_interpolation()
 	await _frames(45)
 
+	# Tailgunner: a round out the back hits the car tailing you.
+	v.status.reset()
+	target.global_transform = Transform3D(Basis.IDENTITY, Vector3(0, 1.0, 18))
+	target.linear_velocity = Vector3.ZERO
+	target.reset_physics_interpolation()
+	await _frames(30)
+	var thp3 := target.health.current
+	await _tap(drv, _inputs("tailgunner"))
+	t = 0.0
+	while target.health.current >= thp3 and t < 1.5:
+		await physics_frame
+		t += 1.0 / 60.0
+	check("tailgunner" in used, "Tailgunner fires from its D-pad combo")
+	check(target.health.current < thp3, "Tailgunner hits the car behind (%.2f s)" % t)
+	target.health.current = target.stats.max_health
+	target.global_transform = Transform3D(Basis.IDENTITY, Vector3(0, 1.0, -22))
+	target.linear_velocity = Vector3.ZERO
+	target.reset_physics_interpolation()
+	await _frames(45)
+
+	# Blackout: a cloaked car can't be locked on or hunted, and firing gives it away.
+	var gun: MachineGun = v.get_node("MachineGun")
+	check(gun.current_target == target, "the gun locks on to the drone ahead")
+	target.combos.request_move("blackout")
+	await _frames(2)
+	check(target.status.is_cloaked(), "Blackout cloaks the car")
+	check(gun.current_target == null, "a cloaked car can't be locked on")
+	v.add_to_group("players")
+	var hunter := DroneDriver.new([Vector3.ZERO] as Array[Vector3])
+	check(hunter._find_prey(target) == v, "a drone hunts a visible player")
+	v.combos.request_move("blackout")
+	check(hunter._find_prey(target) == null, "a drone can't find a cloaked player")
+	v.remove_from_group("players")
+	v.status.reset()
+	var tdrv2: ScriptedDriver = target.driver
+	tdrv2.frame.fire_gun = true
+	await _frames(10)
+	tdrv2.frame.fire_gun = false
+	check(not target.status.is_cloaked(), "firing ends Blackout")
+	await _frames(60)
+	target.health.current = target.stats.max_health
+
+	# Rivet Storm: needs RT held through the long code, then the guns can't overheat.
+	v.status.reset()
+	gun.gun.heat = 0.0
+	gun.gun.overheated = false
+	used.clear()
+	await _tap(drv, _inputs("rivet_storm"))
+	check(not v.status.is_overdriven(), "Rivet Storm needs RT held")
+	await _frames(40)
+	v.status.reset()
+	used.clear()
+	await _tap(drv, _inputs("rivet_storm"), true)
+	check(v.status.is_overdriven() and used == ["rivet_storm"], "held: the long code fires Rivet Storm and nothing else (%s)" % str(used))
+	var shp := target.health.current
+	drv.frame.fire_gun = true
+	var max_heat := 0.0
+	var shots_t := 0.0
+	while v.status.is_overdriven() and target.is_alive():
+		await physics_frame
+		shots_t += 1.0 / 60.0
+		max_heat = maxf(max_heat, gun.gun.heat)
+	drv.frame.fire_gun = false
+	check(max_heat == 0.0 and not gun.gun.overheated, "the guns don't heat up during Rivet Storm")
+	check(target.health.current < shp or not target.is_alive(), "Rivet Storm shreds the drone")
+	_measure["rivet_storm_damage_per_s"] = (shp - maxf(target.health.current, 0.0)) / maxf(shots_t, 0.01)
+	if not target.is_alive():
+		target.respawn(Transform3D(Basis.IDENTITY, Vector3(0, 1.0, -22)))
+	target.health.current = target.stats.max_health
+	target.status.reset()
+	await _frames(45)
+
 	# Weapon crates and special weapons.
 	check(v.specials.total() == 0, "no special weapons at the start")
 	check(v.apply_pickup("weapon", 2), "a weapon crate gives a special")
@@ -749,8 +865,8 @@ func _combo_moves() -> void:
 	drv.frame.cycle_special = -1
 	await _frames(2)
 	check(v.specials.selected == "seeker", "previous special cycles back")
-	# Seeker: aimed off to the side, it still homes in on the drone.
-	v.global_transform = Transform3D(Basis(Vector3.UP, deg_to_rad(8.0)), v.global_position)
+	# Seeker: a little off line but inside the lock-on cone, it homes in on the drone.
+	v.global_transform = Transform3D(Basis(Vector3.UP, deg_to_rad(5.0)), v.global_position)
 	v.reset_physics_interpolation()
 	await _frames(10)
 	var thp2 := target.health.current
@@ -761,7 +877,7 @@ func _combo_moves() -> void:
 	while target.health.current >= thp2 and t < 2.0:
 		await physics_frame
 		t += 1.0 / 60.0
-	check(target.health.current < thp2, "the Seeker hits the drone (%.2f s)" % t)
+	check(target.health.current < thp2, "the Seeker locks on and hits the drone (%.2f s)" % t)
 	check(v.specials.count("seeker") == 1, "firing a special uses one shot")
 	# Frozen cars can't fire specials or use combos.
 	v.status.freeze(1.0)

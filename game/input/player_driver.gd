@@ -26,6 +26,7 @@ func get_frame(_vehicle: Node, _dt: float) -> ArcadeHandling.ControlFrame:
 		f.fire_special = false
 		f.look_back = false
 		f.combo_presses.clear()
+		f.combo_hold = false
 		f.cycle_special = 0
 		return f
 	f.throttle = Input.get_action_strength(_a("accelerate"))
@@ -35,6 +36,7 @@ func get_frame(_vehicle: Node, _dt: float) -> ArcadeHandling.ControlFrame:
 	f.fire_special = Input.is_action_pressed(_a("fire_special"))
 	f.look_back = Input.is_action_pressed(_a("look_back"))
 	# D-pad combo presses (read from the remappable combo actions).
+	f.combo_hold = Input.is_action_pressed(_a("combo_hold"))
 	for dir in COMBO_DIRECTIONS:
 		if Input.is_action_just_pressed(_a("combo_" + dir)):
 			f.combo_presses.append(dir)

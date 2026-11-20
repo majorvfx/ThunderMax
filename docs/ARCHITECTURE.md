@@ -29,7 +29,7 @@ design.
   back. Rams are detected from sudden velocity changes and passed to `CombatRules`.
 - `vehicle/vehicle_factory.gd`: builds a car from its data file (body, collider, visual, gun,
   engine sound).
-- `input/`: per-player actions (`p1_accelerate`...) with Modern and Classic Xbox layouts. Built
+- `input/`: per-player actions (`p1_accelerate`...) with Classic (default, D-pad steering) and Modern Xbox layouts. Built
   for up to four players, one pad each, for split-screen in Milestone 3.
 - `weapons/combo_controller.gd`: reads the combo presses from the car's `ControlFrame`, runs
   them through `ComboBuffer`, spends energy and performs the move. Bots call `request_move()`.

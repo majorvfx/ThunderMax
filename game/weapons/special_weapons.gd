@@ -102,6 +102,7 @@ func fire() -> bool:
 	var w: Dictionary = weapons[id]
 	_cooldown = float(w.get("cooldown", 0.6))
 	ammo[id] = count(id) - 1
+	vehicle.status.reveal()
 	var xf := vehicle.global_transform
 	var fwd := -xf.basis.z
 	var start := xf.origin + fwd * 2.6 + xf.basis.y * 0.8

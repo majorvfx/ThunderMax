@@ -1,8 +1,9 @@
 class_name DroneDriver
 extends RefCounted
 ## Scrap Drones: lap the yard on waypoints, but turn on the player when they get close.
-## They fire their guns in bursts, drop mines when chased, raise a Bulwark when hurt
-## and throw Cold Snaps at a player in front of them. One difficulty for now.
+## They fire their guns in bursts, drop mines or fire a Tailgunner round when chased,
+## raise a Bulwark when hurt and throw Cold Snaps at a player in front of them. A player
+## under Blackout can't be found. One difficulty for now.
 
 var waypoints: Array[Vector3] = []
 var index := 0
@@ -93,7 +94,7 @@ func _find_prey(car: ArcadeVehicle) -> ArcadeVehicle:
 	var best_d := hunt_range
 	for n in car.get_tree().get_nodes_in_group("players"):
 		var p := n as ArcadeVehicle
-		if p == null or not p.is_alive():
+		if p == null or not p.is_alive() or p.status.is_cloaked():
 			continue
 		var d := p.global_position.distance_to(car.global_position)
 		if d < best_d:
@@ -121,8 +122,12 @@ func _combat(car: ArcadeVehicle, prey: ArcadeVehicle, dist: float, angle: float,
 	if car.health.fraction() < 0.35 and car.status.can_afford(60.0):
 		car.combos.request_move("bulwark")
 		return
-	var behind := (prey.global_position - car.global_position).dot(car.global_transform.basis.z) > 0.0
+	var to_prey := prey.global_position - car.global_position
+	var behind := to_prey.dot(car.global_transform.basis.z) > 0.0
+	var dead_behind := behind and car.global_transform.basis.z.angle_to(to_prey) < 0.4
 	if behind and dist < 16.0 and _rng.randf() < 0.5:
 		car.combos.request_move("scrap_mine")
+	elif dead_behind and dist < 35.0 and _rng.randf() < 0.3:
+		car.combos.request_move("tailgunner")
 	elif not behind and dist > 10.0 and dist < 40.0 and angle < 0.2 and _rng.randf() < 0.18:
 		car.combos.request_move("cold_snap")

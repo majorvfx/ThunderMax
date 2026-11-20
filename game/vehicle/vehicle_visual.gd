@@ -14,6 +14,9 @@ var _beacon_time := 0.0
 var _shield_shell: MeshInstance3D
 var _ice_shell: MeshInstance3D
 var _shell_time := 0.0
+var _ghost_shell: MeshInstance3D
+var _cloaked := false
+var _body_parts: Array[Node3D] = []
 
 
 func build(v: ArcadeVehicle, paint_name: String) -> void:
@@ -25,6 +28,9 @@ func build(v: ArcadeVehicle, paint_name: String) -> void:
 		_build_rustjaw()
 	_build_wheels()
 	_build_damage_fx()
+	for c in get_children():
+		if c is Node3D and not (c is CPUParticles3D):
+			_body_parts.append(c)
 	_build_status_shells()
 
 
@@ -52,9 +58,22 @@ func _process(delta: float) -> void:
 		_shield_shell.visible = t > 1.0 or fmod(_shell_time, 0.16) < 0.1
 		_shield_shell.rotation.y = sin(_shell_time * 3.0) * 0.05
 	_ice_shell.visible = vehicle.status.is_frozen()
+	# Blackout: the car itself disappears. Your own car leaves a faint dark ghost so you
+	# can still drive; other cars leave only a heat shimmer you have to look hard for.
+	# (Hiding parts works on every renderer; per-mesh fading doesn't on Compatibility.)
+	var cloaked := vehicle.status.is_cloaked()
+	if cloaked != _cloaked:
+		_cloaked = cloaked
+		for part in _body_parts:
+			part.visible = not cloaked
+	_ghost_shell.visible = cloaked
+	if cloaked:
+		var flicker := 0.85 + 0.15 * sin(_shell_time * 23.0)
+		var mat := _ghost_shell.material_override as StandardMaterial3D
+		mat.albedo_color.a = (0.32 if vehicle.is_player else 0.05) * flicker
 	if _beacon != null:
 		_beacon_time += delta
-		_beacon.visible = fmod(_beacon_time, 0.9) < 0.45
+		_beacon.visible = not _cloaked and fmod(_beacon_time, 0.9) < 0.45
 
 
 func _build_rustjaw() -> void:
@@ -194,3 +213,12 @@ func _build_status_shells() -> void:
 	ice.emission_energy_multiplier = 0.6
 	_ice_shell = VehicleVisualParts.box(self, Vector3(2.2, 1.5, 4.6), Vector3(0, 0.3, 0), ice)
 	_ice_shell.visible = false
+	# Blackout: a dark, barely-there ghost of the car's shape.
+	var ghost := StandardMaterial3D.new()
+	ghost.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	ghost.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	ghost.albedo_color = Color(0.06, 0.06, 0.07, 0.3)
+	ghost.cull_mode = BaseMaterial3D.CULL_DISABLED
+	_ghost_shell = VehicleVisualParts.box(self, Vector3(2.0, 1.2, 4.4), Vector3(0, 0.25, 0), ghost)
+	_ghost_shell.material_override = ghost
+	_ghost_shell.visible = false

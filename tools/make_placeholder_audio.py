@@ -172,6 +172,24 @@ def denied():
     return lowpass(saw(95, t), 900) * gate * env(n, 0.002, 1.0)
 
 
+def cloak():
+    # Smog vent: a long hiss that falls away over a low, fading drone.
+    n = int(0.9 * RATE)
+    t = t_axis(0.9)
+    hiss = lowpass(rng.normal(0, 1, n), 3000) * env(n, 0.02, 1.4)
+    drone = np.sin(2 * np.pi * (70 - 25 * t) * t) * env(n, 0.05, 2.0) * 0.6
+    return hiss + drone
+
+
+def overdrive():
+    # Gun motors spinning up: a rising whine over a fast ratchet.
+    n = int(0.7 * RATE)
+    t = t_axis(0.7)
+    whine = saw(180 + 900 * t, t) * env(n, 0.05, 0.8) * 0.4
+    ratchet = lowpass(rng.normal(0, 1, n), 2500) * ((t % 0.035) < 0.012) * env(n, 0.01, 1.0)
+    return lowpass(whine, 3500) + ratchet
+
+
 def music_yard():
     """A 32-second dark industrial loop at 90 bpm in D minor: drone, pulse, metal hits."""
     bpm = 90.0
@@ -247,6 +265,8 @@ def main():
     save("freeze", freeze(), 0.7)
     save("mine_drop", mine_drop(), 0.75)
     save("denied", denied(), 0.6)
+    save("cloak", cloak(), 0.75)
+    save("overdrive", overdrive(), 0.7)
 
 
 if __name__ == "__main__":

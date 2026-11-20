@@ -1,8 +1,9 @@
 class_name ComboController
 extends Node
 ## Turns D-pad combo presses into Thunder Max's combo moves (data/combos.json):
-## Spring Jack, Bulwark, Cold Snap, Scrap Mine and Fire Jug. Moves cost combo
-## energy, which refills on its own. Bots call request_move() directly.
+## Scrap Mine, Cold Snap, Spring Jack, Rivet Storm, Fire Jug, Tailgunner, Blackout
+## and Bulwark. Moves cost combo energy, which refills on its own. Bots call
+## request_move() directly.
 
 signal move_used(vehicle: ArcadeVehicle, move_id: String, move_name: String)
 signal move_failed(vehicle: ArcadeVehicle, move_id: String, reason: String)
@@ -29,8 +30,9 @@ func _physics_process(delta: float) -> void:
 	var presses := vehicle.frame.combo_presses
 	if presses.is_empty():
 		return
+	var holding := vehicle.frame.combo_hold
 	for p in presses:
-		var id := buffer.push(p, _clock)
+		var id := buffer.push(p, _clock, holding)
 		if id != "":
 			request_move(id)
 	presses.clear()
@@ -40,12 +42,19 @@ func move_name(id: String) -> String:
 	return str(moves.get(id, {}).get("name", id))
 
 
-## Inputs for a move as words, e.g. "Down, Down, Up".
+## Inputs for a move as words, e.g. "Down, Down, Up" or "Hold RT + Up, Down, ...".
 func inputs_text(id: String) -> String:
+	return ComboController.describe_inputs(moves.get(id, {}))
+
+
+static func describe_inputs(move: Dictionary, hold_name: String = "RT") -> String:
 	var out := []
-	for d in moves.get(id, {}).get("inputs", []):
+	for d in move.get("inputs", []):
 		out.append(str(d).capitalize())
-	return ", ".join(out)
+	var text := ", ".join(out)
+	if bool(move.get("hold", false)):
+		text = "Hold %s + %s" % [hold_name, text]
+	return text
 
 
 func request_move(id: String) -> bool:
@@ -73,6 +82,15 @@ func request_move(id: String) -> bool:
 			_drop_mine(m)
 		"fire_jug":
 			_fire_projectile("fire_jug", m)
+		"tailgunner":
+			_tailgunner(m)
+		"blackout":
+			vehicle.status.cloak(float(m.get("duration", 4.0)))
+			Effects.smog_burst(vehicle.get_parent(), vehicle.global_position)
+			GameAudio.play_at("cloak", vehicle.global_position, 0.9)
+		"rivet_storm":
+			vehicle.status.overdrive(float(m.get("duration", 4.0)))
+			GameAudio.play_at("overdrive", vehicle.global_position, 0.9)
 	move_used.emit(vehicle, id, move_name(id))
 	return true
 
@@ -106,6 +124,33 @@ func _fire_projectile(kind: String, m: Dictionary) -> void:
 	vehicle.get_parent().add_child(p)
 	p.launch(start, vel)
 	GameAudio.play_at("launch", start, 0.8, 1.3 if kind == "cold_snap" else 0.8)
+
+
+## A heavy round out the back, aimed at the nearest car in a cone behind.
+func _tailgunner(m: Dictionary) -> void:
+	var xf := vehicle.global_transform
+	var back := xf.basis.z
+	var start := xf.origin + back * 2.8 + xf.basis.y * 0.7
+	var dir := back
+	var best_angle := deg_to_rad(float(m.get("aim_cone_deg", 25.0)))
+	for node in vehicle.get_tree().get_nodes_in_group("targets"):
+		if node == vehicle or not (node is Node3D):
+			continue
+		if node is ArcadeVehicle and (not node.is_alive() or node.status.is_cloaked()):
+			continue
+		var to: Vector3 = (node as Node3D).global_position - xf.origin
+		if to.length() > 60.0:
+			continue
+		var angle := back.angle_to(to)
+		if angle < best_angle:
+			best_angle = angle
+			dir = ((node as Node3D).global_position + Vector3.UP * 0.3 - start).normalized()
+	var p := Projectile.new()
+	p.setup("tailgunner", vehicle, m)
+	vehicle.get_parent().add_child(p)
+	# Add the car's own velocity so the round doesn't crawl when you're driving away.
+	p.launch(start, dir * float(m.get("speed", 60.0)) + vehicle.linear_velocity)
+	GameAudio.play_at("launch", start, 0.9, 0.9)
 
 
 func _drop_mine(m: Dictionary) -> void:

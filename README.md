@@ -26,28 +26,30 @@ weapon crates, set off the fuel drums.
 
 ## Controls
 
-Two pad layouts; switch between them in the pause menu. Your choice is saved.
+Two pad layouts; switch between them in the pause menu. Your choice is saved. **Classic** is
+the default: the D-pad steers and also enters the combo moves.
 Every action can also be remapped (see **Remapping** below); the table shows the defaults.
 
-| Action | Modern (default) | Classic | Keyboard |
+| Action | Classic (default) | Modern | Keyboard |
 | --- | --- | --- | --- |
-| Accelerate | RT | A | W / Up |
-| Brake, then reverse | LT | X | S / Down |
-| Steer | Left stick | D-pad or left stick | A, D / Left, Right |
-| Machine gun | RB | B | Space |
-| Special weapon | X | Y | F |
-| Turbo | A | LT | Shift |
-| Look back | B | RT | C |
-| Previous / next special | LB / Y | LB / RB | Q / E |
+| Accelerate | A | RT | W / Up |
+| Brake, then reverse | X | LT | S / Down |
+| Steer | D-pad or left stick | Left stick | A, D / Left, Right |
+| Machine gun | B | RB | Space |
+| Special weapon | Y | X | F |
+| Turbo | LT | A | Shift |
+| Look back | RT | B | C |
+| Previous / next special | LB / RB | LB / Y | Q / E |
 | Combo moves | D-pad | D-pad | I, K, J, L (up, down, left, right) |
+| Combo hold (for held moves) | RT | RT | Ctrl |
 | Pause | Menu | Menu | Esc |
 | Handling tuning panel | View | View | F1 |
 | Debug readout | | | F3 |
 | Fullscreen | | | F11 |
 
 **Classic** puts the driving on the face buttons the way 1990s pads did, and D-pad steering
-ramps in over a fraction of a second instead of snapping to full lock. **Modern** uses the
-analog triggers for throttle and brake.
+ramps in over a fraction of a second instead of snapping to full lock. The left stick steers
+too. **Modern** uses the analog triggers for throttle and brake and the stick for steering.
 
 **Power slide:** hold brake and steer at speed. A dedicated drift control is planned for a
 later milestone.
@@ -55,24 +57,33 @@ later milestone.
 ### Combo moves
 
 Tap a D-pad sequence quickly (each press within about half a second of the last). Each move
-costs combo energy (the ENERGY bar at the bottom of the status panel), which refills on its own. The notches on the bar
-are 25 energy apart. Your presses show as arrows at the bottom of the screen while you enter
-them, and the pause menu lists every move.
+costs combo energy (the ENERGY bar at the bottom of the status panel), which refills on its
+own. The notches on the bar are 25 energy apart. Your presses show as arrows at the bottom of
+the screen while you enter them, and the pause menu lists every move.
 
-| Move | Inputs | Energy | What it does |
-| --- | --- | --- | --- |
-| Spring Jack | Down, Down, Up | 25 | Hydraulic rams kick the car into the air. Hop walls, dodge mines. |
-| Bulwark | Left, Right, Down | 50 | Welded plates slam shut: no damage for 3 seconds. Puts out fire and thaws ice. |
-| Cold Snap | Right, Left, Up | 35 | A coolant round that freezes the car it hits for about 2 seconds. Aims at your lock-on target. |
-| Scrap Mine | Up, Up, Down | 25 | Drops a spiked charge behind you. Blows up the next car to touch it (three out at a time). |
-| Fire Jug | Up, Down, Up | 35 | Lobs a jug of fuel ahead that leaves a burning pool. Cars in it catch fire. |
+| Move | Xbox inputs | Keyboard | Energy | What it does |
+| --- | --- | --- | --- | --- |
+| Scrap Mine | Right, Left, Down | L, J, K | 25 | Drops a spiked mine behind you. It blows up the next car to touch it (three out at a time). |
+| Cold Snap | Left, Right, Up | J, L, I | 35 | Coolant round that freezes the car it hits for about 2 seconds. Aims at your lock-on target. |
+| Spring Jack | Up, Up, Left | I, I, J | 25 | Hydraulic jump. Hop walls, dodge mines. Ground only. |
+| Rivet Storm | Hold RT + Up, Down, Left, Right, Right, Left, Down, Up | Hold Ctrl + I, K, J, L, L, J, K, I | 50 | For 4 seconds the guns fire twice as fast, hit 1.5 times harder and never overheat. |
+| Fire Jug | Right, Left, Up | L, J, I | 35 | Lobs a jug of fuel ahead that leaves a burning pool. Cars in it catch fire. |
+| Tailgunner | Left, Right, Down | J, L, K | 25 | Heavy round out the back, aimed at whoever is behind you. |
+| Blackout | Right, Down, Left, Up | L, K, J, I | 40 | Black smog: for 4 seconds nothing can lock on to you, Seekers lose you and drones can't find you. Firing ends it. |
+| Bulwark | Up, Up, Right | I, I, L | 50 | Force field: no damage for 3 seconds. Puts out fire and thaws ice. |
 
-A frozen car can't drive, fire specials or use combos. Spring Jack only works on the ground.
-The combo directions are their own actions (Combo up/down/left/right), so they can be remapped
-like everything else. In the Classic layout the D-pad also steers; only the exact sequences
-above fire a move, and every one ends on a direction that steering doesn't use.
+**Held moves:** Rivet Storm only works with RT held while you enter the code. Holding RT also
+keeps a short code inside the long one (Right, Left, Down is in there) from dropping a mine
+partway through. Short moves still work with RT held, so in the Modern layout you can keep
+accelerating while you use them.
 
-Names, inputs, costs and effects all live in `data/combos.json`.
+A frozen car can't drive, fire specials or use combos. The combo directions and the hold are
+their own actions (Combo up/down/left/right, Combo hold), so they can be remapped like
+everything else. In the Classic layout the D-pad also steers; only the exact sequences above
+fire a move, and every one has an Up or Down in it, so steering taps alone never fire one.
+
+Names, inputs, costs and effects all live in `data/combos.json`, so new moves can be added
+there.
 
 ### Special weapons
 
@@ -106,11 +117,13 @@ to the right stick.
 
 ## What's in Milestone 2 so far
 
-- **Five combo moves** on the D-pad with an energy meter (see above).
+- **Eight combo moves** on the D-pad with an energy meter, including a held long code (see above).
 - **Three special weapons** from weapon crates, with ammo per weapon and cycling.
-- **Status effects**: shielded, frozen and burning, shown on the car and on the HUD.
+- **Status effects**: shielded, frozen, burning, cloaked and Rivet Storm, shown on the car and
+  on the HUD.
 - **Scrap Drones fight back**: they hunt you when you're close, fire their guns in bursts,
-  drop mines when you chase them, raise Bulwark when hurt, and throw Cold Snaps.
+  drop mines or fire a Tailgunner round when you chase them, raise Bulwark when hurt, and throw
+  Cold Snaps. They lose you while you're under Blackout.
 
 Still to come in Milestone 2: more cars with their own specials, a second arena with
 destructible scenery, and bot difficulty levels.

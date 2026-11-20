@@ -61,7 +61,6 @@ func _ready() -> void:
 	_moves = VBoxContainer.new()
 	_moves.add_theme_constant_override("separation", 4)
 	row.add_child(_moves)
-	_build_move_list()
 	_remap = RemapScreen.new()
 	add_child(_remap)
 	_remap.closed.connect(_on_remap_closed)
@@ -125,6 +124,7 @@ func _refresh() -> void:
 	_controls_btn.text = "Controls: %s" % InputSetup.PRESET_NAMES[GameSettings.control_preset]
 	_fps_btn.text = "Frame rate: %s" % (governor.label() if governor else GameSettings.fps_mode)
 	_quality_btn.text = "Graphics: %s" % GameSettings.quality.capitalize()
+	_build_move_list()
 	for c in _help.get_children():
 		c.queue_free()
 	var accent := Color(0.95, 0.6, 0.2)
@@ -138,19 +138,29 @@ func _refresh() -> void:
 
 
 ## Combo move list from data/combos.json. Inputs are written as words because
-## the placeholder font has no arrow glyphs.
+## the placeholder font has no arrow glyphs. Long codes wrap after four presses.
 func _build_move_list() -> void:
+	for c in _moves.get_children():
+		c.queue_free()
 	var accent := Color(0.95, 0.6, 0.2)
+	var dim := Color(0.7, 0.66, 0.6)
 	_moves.add_child(UiStyle.label("COMBO MOVES", 16, accent))
-	_moves.add_child(UiStyle.label("Tap the combo directions quickly", 14, Color(0.7, 0.66, 0.6)))
+	_moves.add_child(UiStyle.label("Tap the combo directions quickly", 14, dim))
 	var data: Variant = GameData.load_json(GameData.COMBOS_PATH)
 	if typeof(data) != TYPE_DICTIONARY:
 		return
+	var hold_name := InputBindings.pad_text(1, "combo_hold")
 	var moves: Dictionary = data.get("moves", {})
 	for id in moves:
 		var m: Dictionary = moves[id]
-		var inputs := []
+		_moves.add_child(UiStyle.label("%s  (%d energy)" % [m.get("name", id), int(m.get("cost", 0))], 15))
+		var words := []
 		for d in m.get("inputs", []):
-			inputs.append(str(d).capitalize())
-		_moves.add_child(UiStyle.label("%s  (%d energy)" % [m.get("name", id), int(m.get("cost", 0))], 16))
-		_moves.add_child(UiStyle.label("   " + ", ".join(inputs), 15, Color(0.7, 0.66, 0.6)))
+			words.append(str(d).capitalize())
+		var lines := []
+		for i in range(0, words.size(), 4):
+			lines.append(", ".join(words.slice(i, i + 4)))
+		if bool(m.get("hold", false)):
+			lines.push_front("Hold %s, then" % hold_name)
+		for line in lines:
+			_moves.add_child(UiStyle.label("   " + line, 14, dim))

@@ -161,6 +161,12 @@ func _draw_status(pos: Vector2, fs: int) -> float:
 	if st.is_burning():
 		draw_string(_font, Vector2(pos.x, y), "BURNING", HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1.0, 0.4, 0.1))
 		y += fs + 6
+	if st.is_cloaked():
+		draw_string(_font, Vector2(pos.x, y), "BLACKOUT  %.1f" % st.cloak_time, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.75, 0.72, 0.68))
+		y += fs + 6
+	if st.is_overdriven():
+		draw_string(_font, Vector2(pos.x, y), "RIVET STORM  %.1f" % st.overdrive_time, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1.0, 0.85, 0.3))
+		y += fs + 6
 	return y
 
 

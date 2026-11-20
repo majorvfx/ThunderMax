@@ -10,6 +10,8 @@ var frozen_time := 0.0
 var burn_time := 0.0
 var burn_dps := 0.0
 var burn_source: Object = null
+var cloak_time := 0.0        ## Blackout: can't be locked on or tracked
+var overdrive_time := 0.0    ## Rivet Storm: faster, harder-hitting guns, no heat
 var _cooldowns := {}
 
 
@@ -26,6 +28,8 @@ func reset() -> void:
 	burn_time = 0.0
 	burn_dps = 0.0
 	burn_source = null
+	cloak_time = 0.0
+	overdrive_time = 0.0
 	_cooldowns.clear()
 
 
@@ -41,11 +45,21 @@ func is_burning() -> bool:
 	return burn_time > 0.0
 
 
+func is_cloaked() -> bool:
+	return cloak_time > 0.0
+
+
+func is_overdriven() -> bool:
+	return overdrive_time > 0.0
+
+
 ## Advances timers. Returns burn damage dealt this step.
 func tick(dt: float) -> float:
 	energy = minf(energy_max, energy + energy_regen * dt)
 	shield_time = maxf(0.0, shield_time - dt)
 	frozen_time = maxf(0.0, frozen_time - dt)
+	cloak_time = maxf(0.0, cloak_time - dt)
+	overdrive_time = maxf(0.0, overdrive_time - dt)
 	for k in _cooldowns.keys():
 		_cooldowns[k] = maxf(0.0, _cooldowns[k] - dt)
 	if burn_time <= 0.0:
@@ -88,3 +102,16 @@ func shield(seconds: float) -> void:
 	shield_time = maxf(shield_time, seconds)
 	burn_time = 0.0
 	frozen_time = 0.0
+
+
+func cloak(seconds: float) -> void:
+	cloak_time = maxf(cloak_time, seconds)
+
+
+## Ends Blackout early (the car fired, so it gave itself away).
+func reveal() -> void:
+	cloak_time = 0.0
+
+
+func overdrive(seconds: float) -> void:
+	overdrive_time = maxf(overdrive_time, seconds)

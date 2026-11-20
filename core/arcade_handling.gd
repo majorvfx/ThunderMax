@@ -23,6 +23,7 @@ class ControlFrame:
 	var fire_special := false
 	var look_back := false
 	var combo_presses: Array[String] = []  ## D-pad combo presses this step, in order
+	var combo_hold := false                ## combo hold control down (RT by default)
 	var cycle_special := 0                 ## -1 previous, +1 next, 0 none
 
 	## Copy with the driving zeroed (used while frozen).

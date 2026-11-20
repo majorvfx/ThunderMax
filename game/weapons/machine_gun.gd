@@ -7,6 +7,8 @@ var vehicle: ArcadeVehicle
 var gun := CombatRules.GunState.new()
 var muzzles: Array[Vector3] = [Vector3(-0.45, 0.62, -2.1), Vector3(0.45, 0.62, -2.1)]
 var current_target: Node3D = null
+var _storm_rate := 2.0
+var _storm_damage := 1.5
 var _next_muzzle := 0
 var _rng := RandomNumberGenerator.new()
 
@@ -14,6 +16,11 @@ var _rng := RandomNumberGenerator.new()
 func setup(v: ArcadeVehicle, weapon_data: Dictionary) -> void:
 	vehicle = v
 	gun.configure(weapon_data)
+	var combos: Variant = GameData.load_json(GameData.COMBOS_PATH)
+	if typeof(combos) == TYPE_DICTIONARY:
+		var storm: Dictionary = combos.get("moves", {}).get("rivet_storm", {})
+		_storm_rate = float(storm.get("rate_mult", _storm_rate))
+		_storm_damage = float(storm.get("damage_mult", _storm_damage))
 
 
 func _physics_process(delta: float) -> void:
@@ -21,9 +28,16 @@ func _physics_process(delta: float) -> void:
 		current_target = null
 		return
 	current_target = _find_target()
-	var shots := gun.tick(delta, vehicle.frame.fire_gun)
+	var storm := vehicle.status.is_overdriven()
+	var shots := gun.tick(delta * (_storm_rate if storm else 1.0), vehicle.frame.fire_gun)
+	if storm:
+		# Rivet Storm: the guns don't heat up while it lasts.
+		gun.heat = 0.0
+		gun.overheated = false
+	if shots > 0:
+		vehicle.status.reveal()
 	for i in shots:
-		_fire()
+		_fire(_storm_damage if storm else 1.0)
 
 
 func _find_target() -> Node3D:
@@ -36,6 +50,8 @@ func _find_target() -> Node3D:
 			continue
 		if node.has_method("is_alive") and not node.is_alive():
 			continue
+		if node is ArcadeVehicle and (node as ArcadeVehicle).status.is_cloaked():
+			continue
 		var to: Vector3 = (node as Node3D).global_position - xf.origin
 		var dist := to.length()
 		if dist > gun.range_m or dist < 1.0:
@@ -47,7 +63,7 @@ func _find_target() -> Node3D:
 	return best
 
 
-func _fire() -> void:
+func _fire(damage_mult: float = 1.0) -> void:
 	var xf := vehicle.global_transform
 	var muzzle: Vector3 = xf * muzzles[_next_muzzle]
 	_next_muzzle = (_next_muzzle + 1) % muzzles.size()
@@ -66,7 +82,7 @@ func _fire() -> void:
 		end = hit["position"]
 		var collider: Object = hit["collider"]
 		if collider != null and collider.has_method("take_damage"):
-			collider.take_damage(gun.damage, vehicle)
+			collider.take_damage(gun.damage * damage_mult, vehicle)
 		Effects.sparks(world, end, hit["normal"])
 	Effects.tracer(world, muzzle, end)
 	GameAudio.play_at("gun", muzzle, 0.55)

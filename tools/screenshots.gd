@@ -57,9 +57,9 @@ func _run() -> void:
 	m.player.status.reset()
 	m.player.combos.request_move("bulwark")
 	await _sim(0.4)
-	drv.frame.combo_presses.append("down")
+	drv.frame.combo_presses.append("up")
 	await _sim(0.1)
-	drv.frame.combo_presses.append("down")
+	drv.frame.combo_presses.append("up")
 	await _sim(0.1)
 	_save("combo_bulwark")
 	await _sim(0.6)
@@ -74,6 +74,21 @@ func _run() -> void:
 	m.player.combos.request_move("fire_jug")
 	await _sim(1.4)
 	_save("fire_jug")
+	await _sim(1.5)
+	# Rivet Storm: the guns at double rate with no heat.
+	m.player.status.reset()
+	drone.status.reset()
+	drone.health.reset()
+	m.player.combos.request_move("rivet_storm")
+	drv.frame.fire_gun = true
+	await _sim(0.5)
+	_save("rivet_storm")
+	drv.frame.fire_gun = false
+	# Blackout: smog and a faded car.
+	m.player.status.reset()
+	m.player.combos.request_move("blackout")
+	await _sim(0.8)
+	_save("blackout")
 	m.player.status.reset()
 	# Kicker jump in the east lane.
 	m.player.global_transform = Transform3D(Basis.IDENTITY, Vector3(68, 1.2, 75))
