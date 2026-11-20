@@ -60,6 +60,11 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	_save("pause_menu")
+	m.pause_menu._open_remap()
+	await process_frame
+	await process_frame
+	_save("remap_controls")
+	m.pause_menu._remap.close()
 	m.pause_menu._resume()
 	m.tuning.open(m.player)
 	await process_frame

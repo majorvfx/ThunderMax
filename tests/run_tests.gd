@@ -32,6 +32,7 @@ func _run() -> void:
 	_test_handling_math()
 	_test_combat_rules()
 	_test_input()
+	_test_remap()
 	print("== Handling measurements ==")
 	await _handling_measurements()
 	print("== Arena smoke test ==")
@@ -214,6 +215,78 @@ func _test_input() -> void:
 		if ev is InputEventJoypadButton and ev.button_index == JOY_BUTTON_A:
 			a_btn = true
 	check(a_btn, "classic: A accelerates")
+	InputSetup.apply_preset(1, -1, "modern", true)
+
+
+func _has_code(action: String, code: String) -> bool:
+	for ev in InputMap.action_get_events(InputSetup.action(1, action)):
+		if InputBindings.encode(ev) == code:
+			return true
+	return false
+
+
+func _apply_with_remaps(preset: String) -> void:
+	InputSetup.apply_preset(1, -1, preset, true)
+	InputBindings.apply(1, -1, preset)
+
+
+func _test_remap() -> void:
+	var saved: Dictionary = InputBindings.overrides
+	InputBindings.overrides = {}
+	# Codes survive a round trip.
+	for code in ["btn:0", "btn:12", "axis:5:+", "axis:0:-", "key:87"]:
+		check(InputBindings.encode(InputBindings.decode(code)) == code, "remap: %s round-trips" % code)
+	check(InputBindings.decode("junk") == null, "remap: junk code is rejected")
+	check(InputBindings.describe("axis:5:+") == "RT", "remap: RT has a readable name")
+
+	# Pad remap with swap: put the gun on A (turbo's button in Modern).
+	_apply_with_remaps("modern")
+	var swapped := InputBindings.set_pad(1, "modern", "fire_gun", "btn:%d" % JOY_BUTTON_A)
+	_apply_with_remaps("modern")
+	check(swapped == "turbo", "remap: gun onto A swaps with turbo")
+	check(_has_code("fire_gun", "btn:%d" % JOY_BUTTON_A), "remap: gun is on A")
+	check(not _has_code("fire_gun", "btn:%d" % JOY_BUTTON_RIGHT_SHOULDER), "remap: gun is off RB")
+	check(_has_code("turbo", "btn:%d" % JOY_BUTTON_RIGHT_SHOULDER), "remap: turbo took RB")
+	check(not _has_code("turbo", "btn:%d" % JOY_BUTTON_A), "remap: turbo is off A")
+	check(_has_code("fire_gun", "key:%d" % KEY_SPACE), "remap: pad remap leaves keyboard alone")
+
+	# Pad remaps are per layout.
+	_apply_with_remaps("classic")
+	check(_has_code("fire_gun", "btn:%d" % JOY_BUTTON_B), "remap: classic layout is untouched")
+
+	# Keyboard remap with swap: accelerate main key to Space (the gun's key).
+	_apply_with_remaps("modern")
+	swapped = InputBindings.set_key(1, "accelerate", 0, "key:%d" % KEY_SPACE)
+	_apply_with_remaps("modern")
+	check(swapped == "fire_gun", "remap: Space swaps with the gun")
+	check(_has_code("accelerate", "key:%d" % KEY_SPACE), "remap: accelerate on Space")
+	check(_has_code("accelerate", "key:%d" % KEY_UP), "remap: accelerate keeps its alt key")
+	check(_has_code("fire_gun", "key:%d" % KEY_W), "remap: gun took W")
+	InputBindings.clear_key(1, "accelerate", 1)
+	_apply_with_remaps("modern")
+	check(not _has_code("accelerate", "key:%d" % KEY_UP), "remap: alt key cleared")
+
+	# Remapping steering to the right stick moves analog steering with it.
+	InputBindings.set_pad(1, "modern", "steer_left", "axis:%d:-" % JOY_AXIS_RIGHT_X)
+	_apply_with_remaps("modern")
+	check(_has_code("steer_left", "axis:%d:-" % JOY_AXIS_RIGHT_X), "remap: steer left on right stick")
+
+	# Saved and loaded through a config file.
+	var cfg := ConfigFile.new()
+	InputBindings.save_to(cfg)
+	var before: Dictionary = InputBindings.overrides.duplicate(true)
+	InputBindings.overrides = {}
+	InputBindings.load_from(cfg)
+	check(InputBindings.overrides == before, "remap: overrides survive save and load")
+
+	# Reset puts the defaults back.
+	InputBindings.reset("modern")
+	_apply_with_remaps("modern")
+	check(_has_code("fire_gun", "btn:%d" % JOY_BUTTON_RIGHT_SHOULDER), "remap: reset puts the gun back on RB")
+	check(_has_code("accelerate", "key:%d" % KEY_W), "remap: reset puts W back")
+	check(not InputBindings.has_overrides("modern"), "remap: nothing left after reset")
+
+	InputBindings.overrides = saved
 	InputSetup.apply_preset(1, -1, "modern", true)
 
 

@@ -52,12 +52,28 @@ func _a(name: String) -> StringName:
 	return InputSetup.action(slot, name)
 
 
+## Analog steering from whatever stick axes are bound to steer left / right
+## (the left stick by default). Reads the raw axis so the deadzone ramp above applies.
 func _stick_x() -> float:
-	if device >= 0:
-		return Input.get_joy_axis(device, JOY_AXIS_LEFT_X)
+	var right := _axis_event("steer_right")
+	var left := _axis_event("steer_left")
+	if right == null and left == null:
+		return 0.0
+	var devices: Array = [device] if device >= 0 else Input.get_connected_joypads()
 	var best := 0.0
-	for d in Input.get_connected_joypads():
-		var v := Input.get_joy_axis(d, JOY_AXIS_LEFT_X)
+	for d in devices:
+		var v := 0.0
+		if right != null:
+			v += maxf(0.0, Input.get_joy_axis(d, right.axis) * signf(right.axis_value))
+		if left != null:
+			v -= maxf(0.0, Input.get_joy_axis(d, left.axis) * signf(left.axis_value))
 		if absf(v) > absf(best):
 			best = v
-	return best
+	return clampf(best, -1.0, 1.0)
+
+
+func _axis_event(name: String) -> InputEventJoypadMotion:
+	for ev in InputMap.action_get_events(_a(name)):
+		if ev is InputEventJoypadMotion:
+			return ev
+	return null

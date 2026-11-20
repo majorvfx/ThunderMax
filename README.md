@@ -15,12 +15,17 @@ live tuning panel. All art and audio are placeholders made in code.
 2. Open Godot, choose **Import**, and select this folder's `project.godot`.
 3. Plug in your Xbox controller (USB or Bluetooth), then press **F5** (or the Play button).
 
+To skip the editor, run the game directly:
+`Godot_v4.7.2-stable_win64.exe --path "C:\path\to\ThunderMax"` (a `.bat` file with that line
+works as a desktop shortcut).
+
 Press **A** or **Enter** on the title screen. You start in the Foundry Yard in Rustjaw, with
 three Scrap Drones running laps. Wreck them, grab pickups, set off the fuel drums.
 
 ## Controls
 
 Two pad layouts; switch between them in the pause menu. Your choice is saved.
+Every action can also be remapped (see **Remapping** below); the table shows the defaults.
 
 | Action | Modern (default) | Classic | Keyboard |
 | --- | --- | --- | --- |
@@ -42,6 +47,21 @@ ramps in over a fraction of a second instead of snapping to full lock. **Modern*
 analog triggers for throttle and brake.
 
 **Power slide:** hold brake and steer at speed.
+
+### Remapping
+
+Pause, then choose **Remap controls**. Every action has a controller column and two keyboard
+columns (main and alt key). Pick a cell with the D-pad or mouse, press **A** / **Enter**, then
+press the new button, trigger, stick direction or key. If another action already used it, the two
+swap, so nothing is ever left doubled up. **Backspace** clears a key; **Esc**, or waiting five
+seconds, cancels. Controller remaps are kept separately for Modern and Classic, and keyboard
+remaps apply to both. **Reset to defaults** (press twice) restores the current layout and the
+keyboard. Everything is saved to `user://settings.cfg` straight away.
+
+Analog steering follows whatever stick is bound to Steer left / right, so you can move steering
+to the right stick.
+
+![Remap controls](docs/screenshots/remap_controls.png)
 
 ## What's in Milestone 1
 

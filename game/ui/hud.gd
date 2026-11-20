@@ -101,7 +101,9 @@ func _draw() -> void:
 	# Controls hint at the start.
 	if hint_time > 0.0:
 		var alpha := clampf(hint_time, 0.0, 1.0)
-		var hint := "%s controls  -  Menu: pause  -  View: tuning panel" % InputSetup.PRESET_NAMES.get(GameSettings.control_preset, "")
+		var hint := "%s controls  -  %s: pause  -  %s: tuning panel" % [
+			InputSetup.PRESET_NAMES.get(GameSettings.control_preset, ""),
+			InputBindings.pad_text(1, "pause"), InputBindings.pad_text(1, "tuning")]
 		draw_string(_font, Vector2(0, s.y - pad - 8 * scale_ui), hint, HORIZONTAL_ALIGNMENT_CENTER, s.x, fs - 4, Color(C_DIM, alpha))
 
 	if show_debug:
