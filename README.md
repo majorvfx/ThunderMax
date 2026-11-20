@@ -149,7 +149,7 @@ there.
 
 ### Special weapons
 
-Weapon crates (yellow band) give two shots of a random special. Hold up to six of each, switch
+Weapon crates (cyan band) give two shots of a random special. Hold up to six of each, switch
 with previous / next special, and fire with the special button.
 
 | Special | What it does |
@@ -186,6 +186,10 @@ to the right stick.
   on the HUD.
 - **Rocket turbo**: a nitrous kick, a push that doesn't fade, thrust in the air, and flames out
   the back.
+- **Neon Wasteland look**: an '80s idea of the future, left to rot. A banded sun behind a
+  wireframe ridge, neon tubes and signs on the Yard's walls, a failing cyan grid on the floor,
+  neon trim and underglow in each car's own colour, and chrome-and-neon menus. The palette lives
+  in `game/fx/neon.gd`, so the whole look can be retuned in one place.
 - **Weapons curve slightly**: Firebrand, Cold Snap and the Tailgunner shots bend gently toward a
   target in front of them. The Sledge flies dead straight and the Seeker still homes.
 - **Scrap Drones fight back**: they hunt you when you're close, fire their guns in bursts,
@@ -206,7 +210,8 @@ levels.
 - **Twin Rivet Guns** with unlimited ammo and an overheat bar, light aim assist and a lock-on
   bracket.
 - **Scrap Drones**: driverless cars that lap the yard.
-- **Pickups**: Patch Kits (armor), Nitro Cans (turbo) and, from Milestone 2, weapon crates.
+- **Pickups**: Patch Kits (armor, green), Nitro Cans (turbo, amber) and, from Milestone 2, weapon
+  crates (cyan).
 - **Ram damage** from hard hits, rumble on big hits, wreck and respawn.
 - **Frame rate**: physics always runs at 60 Hz. Display is Auto (60, dropping to a steady 30 on
   slower machines), 30, or 60. Graphics presets Low, Medium, High.

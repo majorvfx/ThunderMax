@@ -3,6 +3,7 @@
   "name": "Scrap Drone",
   "class": "light",
   "paint": "drone",
+  "accent": "#ff1f26",
   "description": "Driverless wrecks rigged to run laps of the Yard. Target practice. Nobody misses them.",
   "health": { "max_health": 40 },
   "drive": { "max_speed": 22.0, "accel": 14.0, "accel_falloff": 0.5, "brake_decel": 40.0, "reverse_max_speed": 9.0, "reverse_accel": 12.0, "coast_decel": 7.0 },

@@ -28,7 +28,7 @@ Targets are our own design windows from `data/handling_targets.json`.
 | parked_shoved_m | 9.46 |  |
 | spring_jack_height_m | 3.95 |  |
 | fire_jug_range_m | 19.85 |  |
-| rivet_storm_damage_per_s | 0.00 |  |
+| rivet_storm_damage_per_s | 34.78 |  |
 | firebrand_turn_in_0_3s_deg | 4.20 |  |
 | rustjaw_top_speed_ms | 30.00 |  |
 | cinder_top_speed_ms | 34.00 |  |
@@ -36,8 +36,8 @@ Targets are our own design windows from `data/handling_targets.json`.
 | sawback_top_speed_ms | 28.00 |  |
 | slag_hook_pull_m | 5.92 |  |
 | dead_weight_throw_m | 3.61 |  |
-| drone_1_travel_25s_m | 364.87 |  |
-| drone_2_travel_25s_m | 333.63 |  |
-| drone_3_travel_25s_m | 401.89 |  |
-| drones_first_hit_on_player_s | 7.15 |  |
-| time_to_wreck_drone_s | 2.00 |  |
+| drone_1_travel_25s_m | 375.01 |  |
+| drone_2_travel_25s_m | 356.17 |  |
+| drone_3_travel_25s_m | 433.08 |  |
+| drones_first_hit_on_player_s | 5.17 |  |
+| time_to_wreck_drone_s | 1.42 |  |

@@ -3,6 +3,7 @@
   "name": "Hogshead",
   "class": "heavy",
   "paint": "hogshead",
+  "accent": "#ffa01a",
   "description": "A fuel tanker with the tank poured full of concrete. Slow to start, impossible to stop.",
   "health": {
     "max_health": 150

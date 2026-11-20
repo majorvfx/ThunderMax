@@ -44,6 +44,9 @@ design.
 - `camera/chase_camera.gd`, `weapons/machine_gun.gd`, `pickups/`, `props/`, `arena/`, `ui/`,
   `audio/`, `fx/`.
 - `ui/car_select.gd`: the car select screen; the choice is saved in `user://settings.cfg`.
+- `fx/neon.gd`: the Neon Wasteland palette (shared by the arena, cars and UI), glowing tube
+  materials and strips, the slanted display font, and the dusk sky shader. Each car's neon trim
+  colour is its `accent` in the vehicle file.
 - `match/yard_match.gd`: the Foundry Yard sandbox (spawning, respawns, messages, menus).
 
 ## Physics

@@ -3,6 +3,7 @@
   "name": "Cinder",
   "class": "light",
   "paint": "cinder",
+  "accent": "#1ae6ff",
   "description": "A dune buggy stripped to the roll cage and a fuel cell. Gone before you can aim. Gone after one good hit.",
   "health": {
     "max_health": 70

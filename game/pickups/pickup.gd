@@ -41,22 +41,22 @@ func _build_visual() -> void:
 	m.roughness = 0.4
 	match kind:
 		"health":
-			m.albedo_color = Color(0.85, 0.82, 0.72)
-			m.emission = Color(0.9, 0.2, 0.15)
-			m.emission_energy_multiplier = 1.4
+			m.albedo_color = Color(0.7, 1.0, 0.6)
+			m.emission = Neon.ACID
+			m.emission_energy_multiplier = 2.2
 			VehicleVisualParts.box(_visual, Vector3(1.0, 0.32, 0.32), Vector3.ZERO, m)
 			VehicleVisualParts.box(_visual, Vector3(0.32, 1.0, 0.32), Vector3.ZERO, m)
 		"weapon":
-			# Rusted ammo crate with a glowing hazard band.
-			m.albedo_color = Color(0.3, 0.27, 0.2)
-			m.emission = Color(1.0, 0.85, 0.2)
-			m.emission_energy_multiplier = 1.2
+			# Rusted ammo crate with a glowing neon band.
+			m.albedo_color = Color(0.6, 0.95, 1.0)
+			m.emission = Neon.CYAN
+			m.emission_energy_multiplier = 2.4
 			VehicleVisualParts.box(_visual, Vector3(1.1, 0.7, 0.8), Vector3.ZERO, VehicleVisualParts.material("rust"))
 			VehicleVisualParts.box(_visual, Vector3(1.14, 0.16, 0.84), Vector3.ZERO, m)
 		_:
-			m.albedo_color = Color(0.25, 0.3, 0.32)
-			m.emission = Color(0.95, 0.6, 0.15)
-			m.emission_energy_multiplier = 1.6
+			m.albedo_color = Color(1.0, 0.8, 0.5)
+			m.emission = Neon.AMBER
+			m.emission_energy_multiplier = 2.2
 			VehicleVisualParts.cylinder(_visual, 0.32, 0.9, Vector3.ZERO, Vector3(0, 0, 18), m)
 	var light := OmniLight3D.new()
 	light.light_color = m.emission

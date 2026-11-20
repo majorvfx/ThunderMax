@@ -20,6 +20,8 @@ var _special_desc: Label
 var _bars := {}            ## stat key -> ProgressBar
 var _dots: Label
 var _ranges := {}          ## stat key -> [min, max] across the roster
+var _fill: StyleBoxFlat    ## shared bar fill, tinted to the car's neon
+var _ring: MeshInstance3D  ## floor ring under the preview, same tint
 
 const STAT_ROWS := [
 	["armor", "ARMOR"],
@@ -85,7 +87,7 @@ func bar_fraction(s: VehicleStats, key: String) -> float:
 func _build() -> void:
 	var bg := ColorRect.new()
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	bg.color = Color(0.03, 0.025, 0.02)
+	bg.color = Neon.NIGHT
 	add_child(bg)
 
 	var root := HBoxContainer.new()
@@ -102,7 +104,7 @@ func _build() -> void:
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	left.size_flags_stretch_ratio = 1.4
 	root.add_child(left)
-	var heading := UiStyle.label("CHOOSE YOUR CAR", 40, Color(0.95, 0.55, 0.18))
+	var heading := UiStyle.heading("CHOOSE YOUR CAR", 40)
 	left.add_child(heading)
 	var view_box := SubViewportContainer.new()
 	view_box.stretch = true
@@ -113,7 +115,7 @@ func _build() -> void:
 	vp.msaa_3d = Viewport.MSAA_2X
 	view_box.add_child(vp)
 	_build_stage(vp)
-	_dots = UiStyle.label("", 22, Color(0.92, 0.86, 0.76))
+	_dots = UiStyle.label("", 22, Neon.INK)
 	_dots.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	left.add_child(_dots)
 
@@ -124,11 +126,11 @@ func _build() -> void:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 8)
 	panel.add_child(col)
-	_name = UiStyle.label("", 44, Color(0.95, 0.9, 0.8))
+	_name = UiStyle.heading("", 44, Neon.INK)
 	col.add_child(_name)
-	_class = UiStyle.label("", 18, Color(0.95, 0.55, 0.18))
+	_class = UiStyle.label("", 18, Neon.CYAN)
 	col.add_child(_class)
-	_desc = UiStyle.label("", 17, Color(0.7, 0.66, 0.6))
+	_desc = UiStyle.label("", 17, Color(0.74, 0.72, 0.88))
 	_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_desc.custom_minimum_size = Vector2(360, 0)
 	col.add_child(_desc)
@@ -139,7 +141,7 @@ func _build() -> void:
 	grid.add_theme_constant_override("v_separation", 8)
 	col.add_child(grid)
 	for row in STAT_ROWS:
-		grid.add_child(UiStyle.label(row[1], 15, Color(0.75, 0.7, 0.64)))
+		grid.add_child(UiStyle.label(row[1], 15, Neon.DIM))
 		var bar := ProgressBar.new()
 		bar.min_value = 0.0
 		bar.max_value = 1.0
@@ -147,52 +149,81 @@ func _build() -> void:
 		bar.custom_minimum_size = Vector2(220, 14)
 		bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		var fill := StyleBoxFlat.new()
-		fill.bg_color = Color(0.85, 0.42, 0.12)
+		if _fill == null:
+			_fill = StyleBoxFlat.new()
+			_fill.bg_color = Neon.MAGENTA
+			_fill.shadow_size = 4
 		var back := StyleBoxFlat.new()
-		back.bg_color = Color(0.15, 0.12, 0.1)
-		bar.add_theme_stylebox_override("fill", fill)
+		back.bg_color = Color(0.1, 0.07, 0.18)
+		back.border_color = Color(0.3, 0.2, 0.5)
+		back.set_border_width_all(1)
+		bar.add_theme_stylebox_override("fill", _fill)
 		bar.add_theme_stylebox_override("background", back)
 		grid.add_child(bar)
 		_bars[row[0]] = bar
 	col.add_child(UiStyle.label(" ", 6))
-	col.add_child(UiStyle.label("OWN SPECIAL", 15, Color(0.75, 0.7, 0.64)))
-	_special_name = UiStyle.label("", 26, Color(0.95, 0.62, 0.15))
+	col.add_child(UiStyle.label("OWN SPECIAL", 15, Neon.DIM))
+	_special_name = UiStyle.heading("", 26, Neon.AMBER)
 	col.add_child(_special_name)
-	_special_desc = UiStyle.label("", 16, Color(0.7, 0.66, 0.6))
+	_special_desc = UiStyle.label("", 16, Color(0.74, 0.72, 0.88))
 	_special_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_special_desc.custom_minimum_size = Vector2(360, 0)
 	col.add_child(_special_desc)
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.add_child(spacer)
-	col.add_child(UiStyle.label("Left / right: choose     A: drive     B: back", 16, Color(0.6, 0.55, 0.5)))
+	col.add_child(UiStyle.label("Left / right: choose     A: drive     B: back", 16, Neon.DIM))
 
 
 func _build_stage(vp: SubViewport) -> void:
 	var stage := Node3D.new()
 	vp.add_child(stage)
 	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.05, 0.035, 0.03)
+	# The same dusk as the Yard, with the sun swung round to sit behind the turntable.
+	var sky_mat := Neon.sky_material()
+	sky_mat.set_shader_parameter("sun_dir", Vector3(-0.62, 0.06, -0.78))
+	var sky := Sky.new()
+	sky.sky_material = sky_mat
+	env.background_mode = Environment.BG_SKY
+	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.55, 0.42, 0.32)
-	env.ambient_light_energy = 0.6
+	env.ambient_light_color = Color(0.45, 0.35, 0.7)
+	env.ambient_light_energy = 0.55
+	env.glow_enabled = true
+	env.glow_intensity = 0.9
+	env.glow_bloom = 0.05
+	env.glow_hdr_threshold = 0.9
 	var we := WorldEnvironment.new()
 	we.environment = env
 	stage.add_child(we)
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-40, 35, 0)
-	sun.light_color = Color(1.0, 0.82, 0.62)
-	sun.light_energy = 1.4
+	sun.light_color = Color(0.8, 0.85, 1.0)
+	sun.light_energy = 1.1
 	stage.add_child(sun)
-	var rim := OmniLight3D.new()
-	rim.position = Vector3(-3, 3, -4)
-	rim.light_color = Color(1.0, 0.45, 0.15)
-	rim.light_energy = 3.0
-	rim.omni_range = 12.0
-	stage.add_child(rim)
+	for rim_def in [[Vector3(-3.5, 2.5, -4), Neon.MAGENTA], [Vector3(4.5, 1.5, -2.5), Neon.CYAN]]:
+		var rim := OmniLight3D.new()
+		rim.position = rim_def[0]
+		rim.light_color = rim_def[1]
+		rim.light_energy = 3.0
+		rim.omni_range = 12.0
+		stage.add_child(rim)
 	VehicleVisualParts.cylinder(stage, 4.2, 0.2, Vector3(0, -0.72, 0), Vector3.ZERO, VehicleVisualParts.material("steel"))
+	# A neon ring on the turntable, tinted to the car on show.
+	_ring = MeshInstance3D.new()
+	var torus := TorusMesh.new()
+	torus.inner_radius = 2.0
+	torus.outer_radius = 2.12
+	torus.rings = 48
+	_ring.mesh = torus
+	_ring.position = Vector3(0, -0.6, 0)
+	_ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	stage.add_child(_ring)
+	# Back wall of failing tubes, so the car reads against something.
+	for i in 7:
+		var x := -6.0 + i * 2.0
+		var tube_col := Neon.VIOLET if i % 2 == 0 else Neon.MAGENTA
+		Neon.strip(stage, Vector3(x, -0.6, -6.0), Vector3(x + 0.6, 4.5, -6.0), tube_col, 0.05, 1.6 if i != 4 else 0.4)
 	_pivot = Node3D.new()
 	stage.add_child(_pivot)
 	var cam := Camera3D.new()
@@ -206,6 +237,11 @@ func _show(i: int) -> void:
 	index = (i + cars.size()) % cars.size()
 	var s := _stats[index]
 	_name.text = s.display_name.to_upper()
+	var tint := Neon.hex(s.accent) if s.accent != "" else Neon.MAGENTA
+	_name.add_theme_color_override("font_outline_color", Color(tint, 0.6))
+	_fill.bg_color = tint
+	_fill.shadow_color = Color(tint, 0.4)
+	_ring.material_override = Neon.tube(tint, 3.0)
 	_class.text = "%s CLASS" % s.vehicle_class.to_upper()
 	_desc.text = s.description
 	for row in STAT_ROWS:

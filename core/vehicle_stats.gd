@@ -12,6 +12,7 @@ var display_name := ""
 var vehicle_class := "medium"
 var description := ""
 var paint := "rust"
+var accent := ""                 ## neon trim and underglow colour, e.g. "#ff2a8c"
 
 # Health
 var max_health := 100.0

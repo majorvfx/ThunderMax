@@ -35,15 +35,15 @@ static func material(kind: String) -> StandardMaterial3D:
 			m.albedo_color = Color(0.06, 0.06, 0.06)
 			m.roughness = 0.95
 		"headlight":
-			m.albedo_color = Color(1.0, 0.85, 0.55)
+			m.albedo_color = Color(0.85, 0.95, 1.0)
 			m.emission_enabled = true
-			m.emission = Color(1.0, 0.8, 0.45)
-			m.emission_energy_multiplier = 3.0
+			m.emission = Color(0.75, 0.92, 1.0)
+			m.emission_energy_multiplier = 3.5
 		"taillight":
-			m.albedo_color = Color(0.6, 0.02, 0.02)
+			m.albedo_color = Color(0.7, 0.02, 0.2)
 			m.emission_enabled = true
-			m.emission = Color(1.0, 0.05, 0.02)
-			m.emission_energy_multiplier = 2.0
+			m.emission = Color(1.0, 0.05, 0.3)
+			m.emission_energy_multiplier = 3.0
 		"soot":
 			m.albedo_color = Color(0.03, 0.025, 0.02)
 			m.roughness = 1.0

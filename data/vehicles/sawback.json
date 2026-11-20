@@ -3,6 +3,7 @@
   "name": "Sawback",
   "class": "medium",
   "paint": "sawback",
+  "accent": "#8cff33",
   "description": "A city street sweeper. The brushes were swapped for blades a long time ago.",
   "health": {
     "max_health": 110

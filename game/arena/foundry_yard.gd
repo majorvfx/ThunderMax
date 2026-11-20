@@ -1,8 +1,9 @@
 class_name FoundryYard
 extends Node3D
 ## Milestone 1 test arena: "The Foundry Yard", a dead steelworks walled in with
-## scrap. Built in code from placeholder blocks so layout changes are quick;
-## it will be rebuilt as an authored scene with real art later.
+## scrap, under a magenta dusk and the neon nobody switched off (see Neon).
+## Built in code from placeholder blocks so layout changes are quick; it will be
+## rebuilt as an authored scene with real art later.
 ##
 ## Layout (top view, north = -Z): a 160 m square yard. A raised furnace deck
 ## in the middle with ramps north and south, container cover east and west, a
@@ -24,6 +25,7 @@ var _wall: StandardMaterial3D
 var _steel: StandardMaterial3D
 var _container_mats: Array[StandardMaterial3D] = []
 var _flicker: OmniLight3D
+var _flicker_tube: MeshInstance3D
 var _flicker_time := 0.0
 var _rng := RandomNumberGenerator.new()
 
@@ -38,31 +40,41 @@ func _ready() -> void:
 	_build_kicker()
 	_build_hidden_pocket()
 	_build_lamps()
+	_build_signs()
 	_define_routes_and_spawns()
 
 
 func _process(delta: float) -> void:
-	# One failing sodium lamp, for unease.
+	# One failing neon lamp, for unease.
 	if _flicker == null:
 		return
 	_flicker_time -= delta
 	if _flicker_time <= 0.0:
-		_flicker.light_energy = 0.0 if _rng.randf() < 0.35 else _rng.randf_range(1.5, 3.0)
+		var on := _rng.randf() >= 0.35
+		_flicker.light_energy = _rng.randf_range(1.5, 3.0) if on else 0.0
+		if _flicker_tube != null:
+			_flicker_tube.visible = on
 		_flicker_time = _rng.randf_range(0.04, 0.5)
 
 
 # --- Materials and environment ------------------------------------------------
 
 func _make_materials() -> void:
+	# Cracked asphalt with a failing neon grid set into it, one tile per 8 m.
 	_concrete = StandardMaterial3D.new()
-	_concrete.albedo_color = Color(0.36, 0.34, 0.31)
+	_concrete.albedo_color = Color(0.2, 0.18, 0.22)
 	_concrete.albedo_texture = VehicleVisualParts.grime_texture(5, 0.5)
 	_concrete.uv1_triplanar = true
-	_concrete.uv1_scale = Vector3(0.22, 0.22, 0.22)
-	_concrete.roughness = 0.95
+	_concrete.uv1_scale = Vector3(0.125, 0.125, 0.125)
+	_concrete.roughness = 0.85
+	_concrete.emission_enabled = true
+	_concrete.emission = Neon.CYAN
+	_concrete.emission_energy_multiplier = 1.6
+	_concrete.emission_operator = BaseMaterial3D.EMISSION_OP_MULTIPLY   # only the lines glow
+	_concrete.emission_texture = _grid_texture()
 
 	_wall = StandardMaterial3D.new()
-	_wall.albedo_color = Color(0.33, 0.17, 0.09)
+	_wall.albedo_color = Color(0.26, 0.14, 0.1)
 	_wall.albedo_texture = VehicleVisualParts.grime_texture(9, 0.6)
 	_wall.uv1_triplanar = true
 	_wall.uv1_scale = Vector3(0.12, 0.12, 0.12)
@@ -70,14 +82,14 @@ func _make_materials() -> void:
 	_wall.roughness = 0.85
 
 	_steel = StandardMaterial3D.new()
-	_steel.albedo_color = Color(0.22, 0.22, 0.23)
+	_steel.albedo_color = Color(0.2, 0.2, 0.25)
 	_steel.albedo_texture = VehicleVisualParts.grime_texture(13, 0.4)
 	_steel.uv1_triplanar = true
 	_steel.uv1_scale = Vector3(0.2, 0.2, 0.2)
 	_steel.metallic = 0.7
 	_steel.roughness = 0.6
 
-	for c in [Color(0.4, 0.12, 0.08), Color(0.16, 0.24, 0.24), Color(0.38, 0.3, 0.12), Color(0.2, 0.2, 0.22)]:
+	for c in [Color(0.32, 0.08, 0.16), Color(0.08, 0.2, 0.24), Color(0.3, 0.22, 0.1), Color(0.16, 0.13, 0.26)]:
 		var m := StandardMaterial3D.new()
 		m.albedo_color = c
 		m.albedo_texture = VehicleVisualParts.grime_texture(17 + _container_mats.size(), 0.55)
@@ -88,41 +100,65 @@ func _make_materials() -> void:
 		_container_mats.append(m)
 
 
+## The floor grid: thin lines on the tile edges with gaps where sections have died.
+func _grid_texture() -> ImageTexture:
+	var n := 128
+	var img := Image.create(n, n, false, Image.FORMAT_RGB8)
+	img.fill(Color.BLACK)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 80
+	var dead_x := []
+	var dead_y := []
+	for run in n / 16:
+		dead_x.append(rng.randf() < 0.2)
+		dead_y.append(rng.randf() < 0.2)
+	for i in n:
+		# Each 16-pixel run of line is either lit or dead.
+		var lit_x: bool = not dead_x[i / 16]
+		var lit_y: bool = not dead_y[i / 16]
+		for w in 2:
+			if lit_x:
+				img.set_pixel(i, w, Color.WHITE)
+			if lit_y:
+				img.set_pixel(w, i, Color.WHITE)
+	img.generate_mipmaps()   # lines fade into the distance instead of shimmering
+	return ImageTexture.create_from_image(img)
+
+
 func _build_environment() -> void:
-	var sky_mat := ProceduralSkyMaterial.new()
-	sky_mat.sky_top_color = Color(0.07, 0.06, 0.06)
-	sky_mat.sky_horizon_color = Color(0.32, 0.18, 0.1)
-	sky_mat.ground_horizon_color = Color(0.2, 0.12, 0.08)
-	sky_mat.ground_bottom_color = Color(0.04, 0.03, 0.03)
 	var sky := Sky.new()
-	sky.sky_material = sky_mat
+	sky.sky_material = Neon.sky_material()
 
 	environment = Environment.new()
 	environment.background_mode = Environment.BG_SKY
 	environment.sky = sky
-	environment.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	environment.ambient_light_energy = 0.6
+	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	environment.ambient_light_color = Color(0.42, 0.3, 0.6)
+	environment.ambient_light_energy = 0.75
 	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	environment.tonemap_exposure = 1.1
+	environment.tonemap_exposure = 1.15
 	environment.fog_enabled = true
-	environment.fog_light_color = Color(0.3, 0.2, 0.14)
+	environment.fog_light_color = Color(0.32, 0.12, 0.38)
 	environment.fog_density = 0.008
-	environment.fog_sky_affect = 0.6
+	environment.fog_sky_affect = 0.25
 	environment.glow_enabled = true
-	environment.glow_intensity = 0.6
-	environment.glow_bloom = 0.05
+	environment.glow_intensity = 0.9
+	environment.glow_strength = 1.1
+	environment.glow_bloom = 0.08
+	environment.glow_hdr_threshold = 0.9
 	environment.adjustment_enabled = true
-	environment.adjustment_saturation = 0.8
-	environment.adjustment_contrast = 1.1
+	environment.adjustment_saturation = 1.15
+	environment.adjustment_contrast = 1.12
 
 	var we := WorldEnvironment.new()
 	we.environment = environment
 	add_child(we)
 
+	# Low dusk sun from the north, where the banded sun sits in the sky.
 	sun = DirectionalLight3D.new()
-	sun.light_color = Color(1.0, 0.72, 0.5)
-	sun.light_energy = 0.9
-	sun.rotation_degrees = Vector3(-38, -35, 0)
+	sun.light_color = Color(1.0, 0.5, 0.62)
+	sun.light_energy = 0.85
+	sun.rotation_degrees = Vector3(-24, 160, 0)
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 90.0
 	add_child(sun)
@@ -184,13 +220,22 @@ func _build_ground_and_walls() -> void:
 	_block(Vector3(HALF * 2.0 + t * 2.0, WALL_HEIGHT, t), Vector3(0, WALL_HEIGHT * 0.5, HALF + t * 0.5), _wall)
 	_block(Vector3(t, WALL_HEIGHT, HALF * 2.0), Vector3(-HALF - t * 0.5, WALL_HEIGHT * 0.5, 0), _wall)
 	_block(Vector3(t, WALL_HEIGHT, HALF * 2.0), Vector3(HALF + t * 0.5, WALL_HEIGHT * 0.5, 0), _wall)
-	# Buttresses along the walls break up the long flat runs.
+	# Buttresses along the walls break up the long flat runs; each wears a neon cap.
 	for i in range(-3, 4):
 		var p := float(i) * 22.0
-		_block(Vector3(1.5, WALL_HEIGHT + 1.5, 1.5), Vector3(p, (WALL_HEIGHT + 1.5) * 0.5, -HALF + 0.3), _steel)
-		_block(Vector3(1.5, WALL_HEIGHT + 1.5, 1.5), Vector3(p, (WALL_HEIGHT + 1.5) * 0.5, HALF - 0.3), _steel)
-		_block(Vector3(1.5, WALL_HEIGHT + 1.5, 1.5), Vector3(-HALF + 0.3, (WALL_HEIGHT + 1.5) * 0.5, p), _steel)
-		_block(Vector3(1.5, WALL_HEIGHT + 1.5, 1.5), Vector3(HALF - 0.3, (WALL_HEIGHT + 1.5) * 0.5, p), _steel)
+		for at in [Vector3(p, 0, -HALF + 0.3), Vector3(p, 0, HALF - 0.3), Vector3(-HALF + 0.3, 0, p), Vector3(HALF - 0.3, 0, p)]:
+			_block(Vector3(1.5, WALL_HEIGHT + 1.5, 1.5), at + Vector3(0, (WALL_HEIGHT + 1.5) * 0.5, 0), _steel)
+			Neon.strip(self, at + Vector3(-0.8, WALL_HEIGHT + 1.55, 0), at + Vector3(0.8, WALL_HEIGHT + 1.55, 0), Neon.MAGENTA, 0.12, 4.0)
+	# A neon tube along the inside top of every wall, and a dimmer one at bumper height.
+	var walls := [
+		[Vector3(-HALF, 0, -HALF + 0.05), Vector3(HALF, 0, -HALF + 0.05), Neon.MAGENTA],
+		[Vector3(-HALF, 0, HALF - 0.05), Vector3(HALF, 0, HALF - 0.05), Neon.CYAN],
+		[Vector3(-HALF + 0.05, 0, -HALF), Vector3(-HALF + 0.05, 0, HALF), Neon.VIOLET],
+		[Vector3(HALF - 0.05, 0, -HALF), Vector3(HALF - 0.05, 0, HALF), Neon.CYAN],
+	]
+	for w in walls:
+		Neon.strip(self, w[0] + Vector3.UP * (WALL_HEIGHT - 0.4), w[1] + Vector3.UP * (WALL_HEIGHT - 0.4), w[2], 0.12, 3.5)
+		Neon.strip(self, w[0] + Vector3.UP * 1.2, w[1] + Vector3.UP * 1.2, w[2], 0.06, 1.5)
 
 
 func _build_furnace_deck() -> void:
@@ -219,6 +264,21 @@ func _build_furnace_deck() -> void:
 		var vent := VehicleVisualParts.box(stack, Vector3(1.6, 0.9, 0.2), Vector3(0, -7.5, 0), glow)
 		vent.rotation_degrees.y = a
 		vent.position = Vector3(sin(deg_to_rad(a)) * 3.02, -7.5, cos(deg_to_rad(a)) * 3.02)
+	for h in [-3.0, 2.0, 7.0]:
+		var ring := MeshInstance3D.new()
+		var torus := TorusMesh.new()
+		torus.inner_radius = 3.02
+		torus.outer_radius = 3.18
+		torus.rings = 32
+		torus.ring_segments = 4
+		torus.material = Neon.tube(Neon.CYAN, 3.0)
+		ring.mesh = torus
+		ring.position = Vector3(0, h, 0)
+		ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		stack.add_child(ring)
+	for z in [-1.0, 1.0]:
+		for x in [-5.05, 5.05]:
+			Neon.strip(self, Vector3(x, 0.15, z * 28.0), Vector3(x, 3.15, z * 12.0), Neon.CYAN, 0.1, 3.0)
 	var fire_light := OmniLight3D.new()
 	fire_light.light_color = Color(1.0, 0.45, 0.15)
 	fire_light.light_energy = 3.0
@@ -268,6 +328,9 @@ func _build_kicker() -> void:
 	# East-lane kicker: launches northbound cars over the lane.
 	_ramp(Vector3(68, 0, 34), Vector3(68, 2.2, 25), 8.0, _steel)
 	_block(Vector3(8, 2.2, 1.0), Vector3(68, 1.1, 24.5), _steel)
+	for x in [64.05, 71.95]:
+		Neon.strip(self, Vector3(x, 0.1, 34), Vector3(x, 2.3, 25), Neon.AMBER, 0.1, 3.5)
+	Neon.strip(self, Vector3(64, 2.3, 24.95), Vector3(72, 2.3, 24.95), Neon.AMBER, 0.1, 3.5)
 
 
 func _build_hidden_pocket() -> void:
@@ -281,21 +344,44 @@ func _build_lamps() -> void:
 	for i in spots.size():
 		var p: Vector3 = spots[i]
 		_block(Vector3(0.4, 9.0, 0.4), p + Vector3(0, 4.5, 0), _steel)
-		var head_mat := StandardMaterial3D.new()
-		head_mat.albedo_color = Color(1.0, 0.7, 0.35)
-		head_mat.emission_enabled = true
-		head_mat.emission = Color(1.0, 0.6, 0.25)
-		head_mat.emission_energy_multiplier = 3.0
-		VehicleVisualParts.box(self, Vector3(1.2, 0.25, 0.6), p + Vector3(0, 9.1, 0), head_mat)
+		var col: Color = Neon.MAGENTA if i % 2 == 0 else Neon.CYAN
+		var tube := Neon.strip(self, p + Vector3(0.3, 3.0, 0.3), p + Vector3(0.3, 9.6, 0.3), col, 0.16, 4.0)
+		VehicleVisualParts.box(self, Vector3(1.4, 0.18, 0.18), p + Vector3(0, 9.7, 0), Neon.tube(col, 4.0))
 		var light := OmniLight3D.new()
-		light.light_color = Color(1.0, 0.62, 0.3)
-		light.light_energy = 2.2
+		light.light_color = col.lerp(Color.WHITE, 0.25)
+		light.light_energy = 2.4
 		light.omni_range = 22.0
 		light.position = p + Vector3(0, 8.6, 0)
 		add_child(light)
 		lamps.append(light)
 		if i == 3:
 			_flicker = light
+			_flicker_tube = tube
+
+
+## Neon signs on the walls. The Yard's management still advertises.
+func _build_signs() -> void:
+	var signs := [
+		# Centred between buttresses (every 22 m) so none of them hides a letter.
+		["FOUNDRY YARD", Vector3(11, 4.6, -HALF + 0.1), 0.0, Neon.MAGENTA, 170],
+		["SALVAGE RIGHTS ENFORCED", Vector3(-HALF + 0.1, 4.2, -33), PI * 0.5, Neon.CYAN, 92],
+		["NO REFUNDS  NO RETURNS", Vector3(HALF - 0.1, 4.2, 33), -PI * 0.5, Neon.AMBER, 92],
+		["THE YARD PROVIDES", Vector3(-11, 4.2, HALF - 0.1), PI, Neon.VIOLET, 120],
+	]
+	for sg in signs:
+		var l := Label3D.new()
+		l.text = sg[0]
+		l.font = Neon.display_font()
+		l.font_size = sg[4]
+		l.pixel_size = 0.012
+		l.modulate = Color(sg[3].r * 2.2, sg[3].g * 2.2, sg[3].b * 2.2)
+		l.outline_size = 18
+		l.outline_modulate = Color(sg[3], 0.35)
+		l.shaded = false
+		l.double_sided = false
+		l.position = sg[1]
+		l.rotation.y = sg[2]
+		add_child(l)
 
 
 func _define_routes_and_spawns() -> void:

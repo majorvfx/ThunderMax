@@ -3,6 +3,7 @@
   "name": "Rustjaw",
   "class": "medium",
   "paint": "rust",
+  "accent": "#ff2a8c",
   "description": "A plow-nosed coupe welded together from three dead sedans. Heavy enough to shove, quick enough to run.",
   "health": {
     "max_health": 100

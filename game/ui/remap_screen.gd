@@ -11,8 +11,8 @@ signal closed
 const CAPTURE_SECONDS := 5.0
 const AXIS_THRESHOLD := 0.6
 const AFTER_CAPTURE_SECONDS := 0.3
-const ACCENT := Color(0.95, 0.6, 0.2)
-const DIM := Color(0.6, 0.55, 0.5)
+const ACCENT := Neon.CYAN
+const DIM := Neon.DIM
 
 var slot := 1
 var _title: Label

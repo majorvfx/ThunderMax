@@ -20,14 +20,14 @@ var _move_time := 0.0
 var _move_bad := false
 var _shield_flash := 0.0
 
-const C_TEXT := Color(0.92, 0.88, 0.8)
-const C_DIM := Color(0.6, 0.56, 0.5)
-const C_HEALTH := Color(0.75, 0.16, 0.08)
-const C_TURBO := Color(0.95, 0.62, 0.15)
-const C_HEAT := Color(0.85, 0.85, 0.8)
-const C_PANEL := Color(0.05, 0.04, 0.035, 0.72)
-const C_EDGE := Color(0.45, 0.25, 0.12)
-const C_ENERGY := Color(0.55, 0.8, 0.95)
+const C_TEXT := Neon.INK
+const C_DIM := Neon.DIM
+const C_HEALTH := Neon.MAGENTA
+const C_TURBO := Neon.AMBER
+const C_HEAT := Color(0.85, 0.85, 0.95)
+const C_PANEL := Color(0.03, 0.02, 0.08, 0.72)
+const C_EDGE := Color(Neon.CYAN, 0.75)
+const C_ENERGY := Neon.CYAN
 const C_ICE := Color(0.55, 0.85, 1.0)
 
 
@@ -98,7 +98,7 @@ func _draw() -> void:
 	if st.is_frozen():
 		draw_rect(Rect2(Vector2.ZERO, s), Color(C_ICE, 0.12))
 	if _shield_flash > 0.0:
-		draw_rect(Rect2(Vector2.ZERO, s), Color(1.0, 0.55, 0.15, _shield_flash * 0.5), false, 14.0 * scale_ui)
+		draw_rect(Rect2(Vector2.ZERO, s), Color(Neon.CYAN, _shield_flash * 0.5), false, 14.0 * scale_ui)
 	if _move_time > 0.0:
 		var a := clampf(_move_time * 2.0, 0.0, 1.0)
 		var col := Color(1.0, 0.35, 0.2, a) if _move_bad else Color(C_TURBO, a)
@@ -131,7 +131,7 @@ func _draw() -> void:
 		if not camera.is_position_behind(wp):
 			var sp := camera.unproject_position(wp)
 			var r := 26.0 * scale_ui
-			_bracket(sp, r, Color(1.0, 0.35, 0.15))
+			_bracket(sp, r, Neon.RED)
 
 	# Messages.
 	var my := s.y * 0.22
@@ -227,7 +227,7 @@ func _draw_combo_trail(center: Vector2, scale_ui: float) -> void:
 
 
 ## Top-down radar, your heading up. Drones are red (hidden under Blackout), live
-## pickups are pale dots. Range 90 m; anything further sits on the rim.
+## pickups are cyan dots. Range 90 m; anything further sits on the rim.
 func _draw_radar(center: Vector2, r: float) -> void:
 	draw_circle(center, r, C_PANEL)
 	draw_arc(center, r, 0.0, TAU, 48, C_EDGE, 2.0)
@@ -248,19 +248,19 @@ func _draw_radar(center: Vector2, r: float) -> void:
 		draw_circle(center + p, size, col)
 	for n in get_tree().get_nodes_in_group("pickups"):
 		if n is Node3D and n.has_method("is_active") and n.is_active():
-			blip.call((n as Node3D).global_position, Color(0.9, 0.85, 0.7, 0.8), 2.5)
+			blip.call((n as Node3D).global_position, Color(Neon.CYAN, 0.8), 2.5)
 	for n in get_tree().get_nodes_in_group("vehicles"):
 		var v := n as ArcadeVehicle
 		if v == null or v == vehicle or not v.is_alive() or v.status.is_cloaked():
 			continue
-		blip.call(v.global_position, Color(1.0, 0.3, 0.15), 4.0)
+		blip.call(v.global_position, Neon.RED, 4.0)
 	# You: an arrow pointing up.
 	var tip := center + Vector2(0, -7)
 	draw_colored_polygon(PackedVector2Array([tip, center + Vector2(-5, 6), center + Vector2(5, 6)]), C_TURBO)
 
 
 func _bar(pos: Vector2, w: float, h: float, frac: float, col: Color, label: String, fs: int) -> void:
-	draw_rect(Rect2(pos, Vector2(w, h)), Color(0.1, 0.08, 0.07, 0.9))
+	draw_rect(Rect2(pos, Vector2(w, h)), Color(0.07, 0.05, 0.13, 0.9))
 	draw_rect(Rect2(pos, Vector2(w * clampf(frac, 0.0, 1.0), h)), col)
 	draw_rect(Rect2(pos, Vector2(w, h)), Color(0, 0, 0, 0.8), false, 1.0)
 	draw_string(_font, pos + Vector2(4, h - 2), label, HORIZONTAL_ALIGNMENT_LEFT, -1, maxi(fs - 2, 9), Color(1, 1, 1, 0.75))

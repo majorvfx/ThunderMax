@@ -50,6 +50,7 @@ func build(v: ArcadeVehicle, paint_name: String) -> void:
 			_build_sawback()
 		_:
 			_build_rustjaw()
+	_build_neon_trim()
 	_build_wheels()
 	_build_damage_fx()
 	for c in get_children():
@@ -271,6 +272,29 @@ func _build_sawback() -> void:
 		P.cylinder(self, 0.15, 0.32, Vector3(x, 0.05, 2.25), Vector3(90, 0, 0), steel)
 		P.cylinder(self, 0.1, 0.04, Vector3(x, 0.05, 2.42), Vector3(90, 0, 0), VehicleVisualParts.material("soot"))
 		_nozzles.append(Vector3(x, 0.05, 2.44))
+
+
+## Neon trim along the sills and an underglow that pools on the ground, in the
+## car's accent colour (its "accent" in the vehicle file).
+func _build_neon_trim() -> void:
+	var s := vehicle.stats
+	if s == null or s.accent == "":
+		return
+	var col := Neon.hex(s.accent)
+	var hw := s.body_width * 0.5 + 0.02
+	var hl := s.body_length * 0.5 - 0.35
+	var y := -0.2
+	for x in [-hw, hw]:
+		Neon.strip(self, Vector3(x, y, -hl), Vector3(x, y, hl), col, 0.06, 3.5)
+	Neon.strip(self, Vector3(-hw + 0.3, y, hl + 0.33), Vector3(hw - 0.3, y, hl + 0.33), col, 0.05, 3.0)
+	var glow := OmniLight3D.new()
+	glow.light_color = col
+	glow.light_energy = 1.6
+	glow.omni_range = maxf(s.body_length * 0.85, 3.0)
+	glow.omni_attenuation = 1.4
+	glow.position = Vector3(0, -0.45, 0)
+	glow.shadow_enabled = false
+	add_child(glow)
 
 
 func _build_drone() -> void:
