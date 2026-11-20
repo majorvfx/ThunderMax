@@ -1,6 +1,6 @@
 class_name GameSettings
 extends RefCounted
-## Player settings, saved to user://settings.cfg.
+## Player settings, saved to user://settings.cfg (including remapped controls).
 ##
 ## Frame rate: physics always runs at 60 Hz so handling feels the same at any
 ## frame rate. "auto" starts at 60 fps and drops to a steady 30 if the machine
@@ -32,6 +32,7 @@ static func load_settings() -> void:
 	control_preset = str(cfg.get_value("controls", "preset", control_preset))
 	sfx_volume = float(cfg.get_value("audio", "sfx", sfx_volume))
 	music_volume = float(cfg.get_value("audio", "music", music_volume))
+	InputBindings.load_from(cfg)
 	if not FPS_MODES.has(fps_mode):
 		fps_mode = "auto"
 	if not QUALITIES.has(quality):
@@ -47,6 +48,7 @@ static func save_settings() -> void:
 	cfg.set_value("controls", "preset", control_preset)
 	cfg.set_value("audio", "sfx", sfx_volume)
 	cfg.set_value("audio", "music", music_volume)
+	InputBindings.save_to(cfg)
 	cfg.save(PATH)
 
 
@@ -55,8 +57,10 @@ static func next_in(list: Array, current: String) -> String:
 	return list[(i + 1) % list.size()]
 
 
+## Builds the chosen pad layout plus keyboard, then applies the player's remaps.
 static func apply_controls() -> void:
 	InputSetup.apply_preset(1, -1, control_preset, true)
+	InputBindings.apply(1, -1, control_preset)
 
 
 ## Applies render quality to a viewport, its world environment and the arena lights.

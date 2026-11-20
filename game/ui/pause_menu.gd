@@ -12,7 +12,9 @@ var _first: Button
 var _controls_btn: Button
 var _fps_btn: Button
 var _quality_btn: Button
-var _help: VBoxContainer
+var _remap_btn: Button
+var _help: GridContainer
+var _remap: RemapScreen
 
 
 func _ready() -> void:
@@ -41,6 +43,8 @@ func _ready() -> void:
 	col.add_child(_first)
 	_controls_btn = UiStyle.button("", _toggle_controls)
 	col.add_child(_controls_btn)
+	_remap_btn = UiStyle.button("Remap controls", _open_remap)
+	col.add_child(_remap_btn)
 	_fps_btn = UiStyle.button("", _toggle_fps)
 	col.add_child(_fps_btn)
 	_quality_btn = UiStyle.button("", _toggle_quality)
@@ -48,11 +52,25 @@ func _ready() -> void:
 	col.add_child(UiStyle.button("Restart the Yard", func(): restart_requested.emit()))
 	col.add_child(UiStyle.button("Quit to title", func(): quit_requested.emit()))
 
-	_help = VBoxContainer.new()
-	_help.add_theme_constant_override("separation", 4)
+	_help = GridContainer.new()
+	_help.columns = 3
+	_help.add_theme_constant_override("h_separation", 18)
+	_help.add_theme_constant_override("v_separation", 4)
 	row.add_child(_help)
+	_remap = RemapScreen.new()
+	add_child(_remap)
+	_remap.closed.connect(_on_remap_closed)
 	_refresh()
 	visible = false
+
+
+func _open_remap() -> void:
+	_remap.open()
+
+
+func _on_remap_closed() -> void:
+	_refresh()
+	_remap_btn.grab_focus()
 
 
 func open() -> void:
@@ -69,7 +87,7 @@ func _resume() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not visible:
+	if not visible or _remap.visible:
 		return
 	if event.is_action_pressed("ui_cancel") or event.is_action_pressed(InputSetup.action(1, "pause")):
 		get_viewport().set_input_as_handled()
@@ -104,10 +122,11 @@ func _refresh() -> void:
 	_quality_btn.text = "Graphics: %s" % GameSettings.quality.capitalize()
 	for c in _help.get_children():
 		c.queue_free()
-	_help.add_child(UiStyle.label("XBOX CONTROLLER", 18, Color(0.95, 0.6, 0.2)))
-	for pair in InputSetup.PRESET_HELP[GameSettings.control_preset]:
-		_help.add_child(UiStyle.label("%-18s %s" % [pair[0], pair[1]], 17))
-	_help.add_child(UiStyle.label(" ", 8))
-	_help.add_child(UiStyle.label("KEYBOARD", 18, Color(0.95, 0.6, 0.2)))
-	for pair in InputSetup.KEYBOARD_HELP:
-		_help.add_child(UiStyle.label("%-18s %s" % [pair[0], pair[1]], 15, Color(0.7, 0.66, 0.6)))
+	var accent := Color(0.95, 0.6, 0.2)
+	_help.add_child(UiStyle.label("", 16))
+	_help.add_child(UiStyle.label("CONTROLLER", 16, accent))
+	_help.add_child(UiStyle.label("KEYBOARD", 16, accent))
+	for a in InputBindings.LABELS:
+		_help.add_child(UiStyle.label(InputBindings.LABELS[a], 16))
+		_help.add_child(UiStyle.label(InputBindings.pad_text(1, a), 16))
+		_help.add_child(UiStyle.label(InputBindings.key_text(1, a), 16, Color(0.7, 0.66, 0.6)))
