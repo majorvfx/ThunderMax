@@ -92,7 +92,7 @@ the screen while you enter them, and the pause menu lists every move.
 | Spring Jack | Up, Up, Left | I, I, J | 25 | Hydraulic jump. Hop walls, dodge mines. Ground only. |
 | Rivet Storm | Hold RT + Up, Down, Left, Right, Right, Left, Down, Up | Hold Ctrl + I, K, J, L, L, J, K, I | 50 | For 4 seconds the guns fire twice as fast, hit 1.5 times harder and never overheat. |
 | Fire Jug | Right, Left, Up | L, J, I | 35 | Lobs a jug of fuel ahead that leaves a burning pool. Cars in it catch fire. |
-| Tailgunner | Left, Right, Down | J, L, K | 25 | Heavy round out the back, aimed at whoever is behind you. |
+| Tailgunner | Left, Right, Down | J, L, K | 35, or a special shot | Fires your selected special weapon out the back at whoever is behind you, using one of its shots and no energy. With no special selected (or none left) it fires a freeze blast out the back for 35 energy. |
 | Blackout | Right, Down, Left, Up | L, K, J, I | 40 | Black smog: for 4 seconds nothing can lock on to you, Seekers lose you and drones can't find you. Firing ends it. |
 | Bulwark | Up, Up, Right | I, I, L | 50 | Force field: no damage for 3 seconds. Puts out fire and thaws ice. |
 

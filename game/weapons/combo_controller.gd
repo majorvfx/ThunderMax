@@ -67,6 +67,8 @@ func request_move(id: String) -> bool:
 	if id == "spring_jack" and not vehicle.grounded:
 		move_failed.emit(vehicle, id, "airborne")
 		return false
+	if id == "tailgunner":
+		return _tailgunner(m)
 	if not vehicle.status.try_spend(id, float(m.get("cost", 0.0)), float(m.get("cooldown", 0.5))):
 		move_failed.emit(vehicle, id, "energy")
 		return false
@@ -82,8 +84,6 @@ func request_move(id: String) -> bool:
 			_drop_mine(m)
 		"fire_jug":
 			_fire_projectile("fire_jug", m)
-		"tailgunner":
-			_tailgunner(m)
 		"blackout":
 			vehicle.status.cloak(float(m.get("duration", 4.0)))
 			Effects.smog_burst(vehicle.get_parent(), vehicle.global_position)
@@ -126,31 +126,38 @@ func _fire_projectile(kind: String, m: Dictionary) -> void:
 	GameAudio.play_at("launch", start, 0.8, 1.3 if kind == "cold_snap" else 0.8)
 
 
-## A heavy round out the back, aimed at the nearest car in a cone behind.
-func _tailgunner(m: Dictionary) -> void:
+## Tailgunner: fires the selected special weapon out the back, using its ammo and
+## no energy. With no special (or none left) it fires a Cold Snap freeze blast out
+## the back instead, which costs the move's energy.
+func _tailgunner(m: Dictionary) -> bool:
+	var cooldown := float(m.get("cooldown", 0.6))
+	var sp := vehicle.specials
+	if sp != null and sp.has_shot():
+		if not vehicle.status.try_spend("tailgunner", 0.0, cooldown):
+			return false   # still cooling down from the last rear shot
+		var weapon := sp.display_name(sp.selected)
+		sp.fire(true)
+		move_used.emit(vehicle, "tailgunner", "%s: %s" % [move_name("tailgunner"), weapon])
+		return true
+	if not vehicle.status.try_spend("tailgunner", float(m.get("cost", 35.0)), cooldown):
+		move_failed.emit(vehicle, "tailgunner", "energy")
+		return false
+	var freeze: Dictionary = moves.get("cold_snap", {})
 	var xf := vehicle.global_transform
 	var back := xf.basis.z
 	var start := xf.origin + back * 2.8 + xf.basis.y * 0.7
 	var dir := back
-	var best_angle := deg_to_rad(float(m.get("aim_cone_deg", 25.0)))
-	for node in vehicle.get_tree().get_nodes_in_group("targets"):
-		if node == vehicle or not (node is Node3D):
-			continue
-		if node is ArcadeVehicle and (not node.is_alive() or node.status.is_cloaked()):
-			continue
-		var to: Vector3 = (node as Node3D).global_position - xf.origin
-		if to.length() > 60.0:
-			continue
-		var angle := back.angle_to(to)
-		if angle < best_angle:
-			best_angle = angle
-			dir = ((node as Node3D).global_position + Vector3.UP * 0.3 - start).normalized()
+	var target := Targeting.in_cone(vehicle, back, float(m.get("aim_cone_deg", 30.0)), float(m.get("aim_range_m", 70.0)))
+	if target != null:
+		dir = (target.global_position + Vector3.UP * 0.3 - start).normalized()
 	var p := Projectile.new()
-	p.setup("tailgunner", vehicle, m)
+	p.setup("cold_snap", vehicle, freeze)
 	vehicle.get_parent().add_child(p)
-	# Add the car's own velocity so the round doesn't crawl when you're driving away.
-	p.launch(start, dir * float(m.get("speed", 60.0)) + vehicle.linear_velocity)
-	GameAudio.play_at("launch", start, 0.9, 0.9)
+	# Carry the car's own velocity so the shot leaves cleanly when you're driving away.
+	p.launch(start, dir * float(freeze.get("speed", 75.0)) + vehicle.linear_velocity)
+	GameAudio.play_at("launch", start, 0.8, 1.3)
+	move_used.emit(vehicle, "tailgunner", "%s: Freeze Blast" % move_name("tailgunner"))
+	return true
 
 
 func _drop_mine(m: Dictionary) -> void:

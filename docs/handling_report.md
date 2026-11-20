@@ -25,9 +25,9 @@ Targets are our own design windows from `data/handling_targets.json`.
 | parked_shoved_m | 9.46 |  |
 | spring_jack_height_m | 3.95 |  |
 | fire_jug_range_m | 19.85 |  |
-| rivet_storm_damage_per_s | 39.47 |  |
-| drone_1_travel_25s_m | 354.94 |  |
-| drone_2_travel_25s_m | 387.02 |  |
-| drone_3_travel_25s_m | 398.03 |  |
-| drones_first_hit_on_player_s | 5.70 |  |
+| rivet_storm_damage_per_s | 34.78 |  |
+| drone_1_travel_25s_m | 357.78 |  |
+| drone_2_travel_25s_m | 383.84 |  |
+| drone_3_travel_25s_m | 425.92 |  |
+| drones_first_hit_on_player_s | 5.22 |  |
 | time_to_wreck_drone_s | 1.77 |  |

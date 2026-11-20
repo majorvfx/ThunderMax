@@ -95,8 +95,14 @@ func _physics_process(delta: float) -> void:
 		fire()
 
 
-func fire() -> bool:
-	if selected == "" or count(selected) <= 0:
+func has_shot() -> bool:
+	return selected != "" and count(selected) > 0
+
+
+## Fires the selected special. `backward` fires it out the back (Tailgunner),
+## aimed at the nearest car behind.
+func fire(backward: bool = false) -> bool:
+	if not has_shot():
 		return false
 	var id := selected
 	var w: Dictionary = weapons[id]
@@ -105,20 +111,27 @@ func fire() -> bool:
 	vehicle.status.reveal()
 	var xf := vehicle.global_transform
 	var fwd := -xf.basis.z
-	var start := xf.origin + fwd * 2.6 + xf.basis.y * 0.8
+	var aim := xf.basis.z if backward else fwd
+	var start := xf.origin + aim * (2.8 if backward else 2.6) + xf.basis.y * 0.8
 	var target: Node3D = null
-	var gun := vehicle.get_node_or_null("MachineGun") as MachineGun
-	if gun != null:
-		target = gun.current_target
+	if backward:
+		target = Targeting.in_cone(vehicle, aim, 30.0, 70.0)
+	else:
+		var gun := vehicle.get_node_or_null("MachineGun") as MachineGun
+		if gun != null:
+			target = gun.current_target
 	var p := Projectile.new()
 	p.setup(id, vehicle, w)
 	if id == "seeker":
 		p.homing_target = target
 	vehicle.get_parent().add_child(p)
-	var dir := fwd
+	var dir := aim
 	if target != null and id != "sledge":
 		dir = (target.global_position + Vector3.UP * 0.3 - start).normalized()
-	p.launch(start, dir * float(w.get("speed", 40.0)) + fwd * maxf(vehicle.drive.speed, 0.0) * 0.5)
+	# Forward shots get a share of the car's speed; rear shots carry all of it so
+	# they leave the car cleanly.
+	var carry := vehicle.linear_velocity if backward else fwd * maxf(vehicle.drive.speed, 0.0) * 0.5
+	p.launch(start, dir * float(w.get("speed", 40.0)) + carry)
 	GameAudio.play_at("launch", start, 0.9, 0.7 if id == "sledge" else 1.0)
 	if count(id) <= 0:
 		ammo.erase(id)

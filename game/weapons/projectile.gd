@@ -46,9 +46,6 @@ func _build_visual() -> void:
 			size = Vector3(0.4, 0.4, 1.3)
 		"firebrand":
 			col = Color(1.0, 0.6, 0.15)
-		"tailgunner":
-			col = Color(1.0, 0.75, 0.3)
-			size = Vector3(0.32, 0.32, 1.0)
 	var m := StandardMaterial3D.new()
 	m.albedo_color = col
 	m.emission_enabled = true

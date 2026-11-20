@@ -89,14 +89,12 @@
         "right",
         "down"
       ],
-      "cost": 25,
+      "cost": 35,
       "cooldown": 0.6,
-      "description": "A heavy round fired out the back at whoever is tailing you.",
-      "damage": 14.0,
-      "speed": 60.0,
-      "impulse": 6000.0,
-      "life_s": 2.0,
-      "aim_cone_deg": 25.0
+      "uses_special": true,
+      "aim_cone_deg": 30.0,
+      "aim_range_m": 70.0,
+      "description": "Fires your selected special weapon out the back, using one of its shots and no energy. With no special selected, or none left, it fires a Cold Snap freeze blast out the back instead, which costs energy."
     },
     "blackout": {
       "name": "Blackout",

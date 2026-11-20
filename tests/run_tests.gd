@@ -848,20 +848,54 @@ func _combo_moves() -> void:
 	target.reset_physics_interpolation()
 	await _frames(45)
 
-	# Tailgunner: a round out the back hits the car tailing you.
+	# Tailgunner with no special: a freeze blast out the back, paid for with energy.
 	v.status.reset()
+	v.specials.clear()
 	target.global_transform = Transform3D(Basis.IDENTITY, Vector3(0, 1.0, 18))
 	target.linear_velocity = Vector3.ZERO
 	target.reset_physics_interpolation()
 	await _frames(30)
+	var tail_cost := float(GameData.load_json(GameData.COMBOS_PATH)["moves"]["tailgunner"]["cost"])
+	var e_tail := v.status.energy
+	await _tap(drv, _inputs("tailgunner"))
+	check("tailgunner" in used, "Tailgunner fires from its D-pad combo")
+	near(v.status.energy, e_tail - tail_cost, 2.0, "with no special, Tailgunner costs energy")
+	t = 0.0
+	while not target.status.is_frozen() and t < 1.5:
+		await physics_frame
+		t += 1.0 / 60.0
+	check(target.status.is_frozen(), "with no special, Tailgunner freezes the car behind (%.2f s)" % t)
+	target.status.reset()
+	await _frames(45)
+
+	# With a special selected: that weapon goes out the back, using ammo, not energy.
+	v.status.reset()
+	v.specials.add("seeker", 1)
 	var thp3 := target.health.current
 	await _tap(drv, _inputs("tailgunner"))
+	check(v.status.energy >= v.status.energy_max - 0.01, "a rear special shot costs no energy")
+	check(v.specials.count("seeker") == 0, "a rear special shot uses one of its shots")
 	t = 0.0
 	while target.health.current >= thp3 and t < 1.5:
 		await physics_frame
 		t += 1.0 / 60.0
-	check("tailgunner" in used, "Tailgunner fires from its D-pad combo")
-	check(target.health.current < thp3, "Tailgunner hits the car behind (%.2f s)" % t)
+	check(target.health.current < thp3, "Tailgunner fires the selected Seeker at the car behind (%.2f s)" % t)
+	check(not target.status.is_frozen(), "a rear special shot is the special, not a freeze")
+	await _frames(45)
+
+	# Out of ammo: back to the freeze blast for energy.
+	var e_tail2 := v.status.energy
+	await _tap(drv, _inputs("tailgunner"))
+	near(v.status.energy, e_tail2 - tail_cost, 2.0, "out of ammo, Tailgunner uses energy again")
+	await _frames(45)
+	# No special and not enough energy: nothing fires.
+	v.status.reset()
+	v.status.energy = 10.0
+	failed.clear()
+	await _tap(drv, _inputs("tailgunner"))
+	check("tailgunner:energy" in failed, "with no special and no energy, Tailgunner fails")
+	v.status.reset()
+	target.status.reset()
 	target.health.current = target.stats.max_health
 	target.global_transform = Transform3D(Basis.IDENTITY, Vector3(0, 1.0, -22))
 	target.linear_velocity = Vector3.ZERO

@@ -155,7 +155,10 @@ func _build_move_list() -> void:
 	var moves: Dictionary = data.get("moves", {})
 	for id in moves:
 		var m: Dictionary = moves[id]
-		_moves.add_child(UiStyle.label("%s  (%d energy)" % [m.get("name", id), int(m.get("cost", 0))], 15))
+		var cost := "%d energy" % int(m.get("cost", 0))
+		if bool(m.get("uses_special", false)):
+			cost = "a special shot, or %s" % cost
+		_moves.add_child(UiStyle.label("%s  (%s)" % [m.get("name", id), cost], 15))
 		var words := []
 		for d in m.get("inputs", []):
 			words.append(str(d).capitalize())
