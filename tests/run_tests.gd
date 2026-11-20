@@ -42,6 +42,7 @@ func _run() -> void:
 	await _handling_measurements()
 	print("== Combo moves and specials ==")
 	await _combo_moves()
+	await _weapon_curve()
 	print("== Arena smoke test ==")
 	await _arena_smoke()
 	_write_report()
@@ -253,7 +254,7 @@ func _test_input() -> void:
 	var LT := "axis:%d:+" % JOY_AXIS_TRIGGER_LEFT
 	var RT := "axis:%d:+" % JOY_AXIS_TRIGGER_RIGHT
 	var expected := {
-		"standard": {"accelerate": X, "brake": Y, "turbo": B, "tight_turn": A,
+		"standard": {"accelerate": X, "brake": B, "turbo": Y, "tight_turn": A,
 			"special_next": RB, "special_prev": LB, "fire_special": LT, "fire_gun": RT},
 		"alt1": {"accelerate": A, "brake": LT, "turbo": Y, "tight_turn": RT,
 			"special_next": RB, "special_prev": LB, "fire_special": B, "fire_gun": X},
@@ -1066,6 +1067,57 @@ func _combo_moves() -> void:
 	check("bulwark:frozen" in failed, "a frozen car cannot use combos")
 	world.queue_free()
 	await _frames(5)
+
+
+# --- Weapon curve ------------------------------------------------------------------
+
+## Fires one shot from a parked car facing -Z at a parked target and reports whether
+## it hit, plus how far the shot turned in its first 0.3 s.
+func _shoot_at(kind: String, off_deg: float, dist: float) -> Dictionary:
+	var world := _make_pad()
+	var pair := await _spawn_settled(world, Vector3(0, 1.0, 0))
+	var v: ArcadeVehicle = pair[0]
+	var a := deg_to_rad(off_deg)
+	var target_pair := _spawn(world, "rustjaw", Vector3(sin(a) * dist, 1.0, -cos(a) * dist))
+	var target: ArcadeVehicle = target_pair[0]
+	await _frames(45)
+	var hp := target.health.current
+	if kind == "cold_snap":
+		v.combos.request_move("cold_snap")
+	else:
+		v.specials.clear()
+		v.specials.add(kind, 1)
+		v.specials.fire()
+	var shot: Projectile = null
+	for c in world.get_children():
+		if c is Projectile:
+			shot = c
+	var dir0 := shot.velocity.normalized() if shot != null else Vector3.ZERO
+	await _frames(18)
+	var turned := rad_to_deg(dir0.angle_to(shot.velocity.normalized())) if shot != null and is_instance_valid(shot) else -1.0
+	var t := 0.0
+	while target.health.current >= hp and t < 2.5:
+		await physics_frame
+		t += 1.0 / 60.0
+	var out := {"hit": target.health.current < hp, "turned": turned, "frozen": target.status.is_frozen()}
+	world.queue_free()
+	await _frames(2)
+	return out
+
+
+func _weapon_curve() -> void:
+	# 14 deg/s (a tenth of the Seeker's turn) catches a car about 4 degrees off line at 40 m.
+	var r := await _shoot_at("firebrand", 4.0, 40.0)
+	check(r["hit"], "a Firebrand curves onto a target 4 degrees off line at 40 m")
+	check(r["turned"] > 0.5 and r["turned"] <= 14.0 * 0.3 + 0.5, "the Firebrand's curve is slight (%.1f deg in 0.3 s)" % r["turned"])
+	_measure["firebrand_turn_in_0_3s_deg"] = r["turned"]
+	r = await _shoot_at("firebrand", 35.0, 30.0)
+	check(not r["hit"], "a Firebrand ignores a target outside its view")
+	r = await _shoot_at("sledge", 4.0, 40.0)
+	check(not r["hit"], "the Sledge flies dead straight past a target 4 degrees off line")
+	check(r["turned"] >= 0.0 and r["turned"] < 0.1, "the Sledge doesn't turn (%.2f deg)" % r["turned"])
+	r = await _shoot_at("cold_snap", 4.0, 40.0)
+	check(r["hit"] and r["frozen"], "Cold Snap curves onto a target 4 degrees off line and freezes it")
 
 
 # --- Arena smoke test ---------------------------------------------------------------

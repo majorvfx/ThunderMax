@@ -36,10 +36,9 @@ const PRESET_NAMES := {
 const RENAMED := {"classic": "standard"}
 
 ## Button for each action in the four D-pad layouts (A B X Y LB RB LT RT).
-## Standard puts turbo on B and brake on Y (Mathias's call: B is the rocket button).
 const RETRO_LAYOUTS := {
 	"standard": {
-		"accelerate": "X", "brake": "Y", "turbo": "B", "tight_turn": "A",
+		"accelerate": "X", "brake": "B", "turbo": "Y", "tight_turn": "A",
 		"special_next": "RB", "special_prev": "LB", "fire_special": "LT", "fire_gun": "RT",
 	},
 	"alt1": {

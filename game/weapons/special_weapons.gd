@@ -120,13 +120,18 @@ func fire(backward: bool = false) -> bool:
 		var gun := vehicle.get_node_or_null("MachineGun") as MachineGun
 		if gun != null:
 			target = gun.current_target
+	var curves := w.has("curve_deg_per_s")
+	if target == null and curves:
+		target = Targeting.in_cone(vehicle, aim, float(w.get("view_cone_deg", 25.0)), 90.0)
 	var p := Projectile.new()
 	p.setup(id, vehicle, w)
-	if id == "seeker":
+	# The Seeker locks on and turns hard; curving shots (Firebrand) leave straight
+	# and bend gently toward the target; the Sledge ignores targets entirely.
+	if id == "seeker" or curves:
 		p.homing_target = target
 	vehicle.get_parent().add_child(p)
 	var dir := aim
-	if target != null and id != "sledge":
+	if target != null and id == "seeker":
 		dir = (target.global_position + Vector3.UP * 0.3 - start).normalized()
 	# Forward shots get a share of the car's speed; rear shots carry all of it so
 	# they leave the car cleanly.

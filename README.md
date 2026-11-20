@@ -36,9 +36,9 @@ can also be remapped (see **Remapping** below); the tables show the defaults.
 | Action | Standard (default) | Alternate 1 | Alternate 2 | Shoulders |
 | --- | --- | --- | --- | --- |
 | Gas | X / D-pad up | A / D-pad up | A / D-pad up | RT / D-pad up |
-| Brake, then reverse | Y / D-pad down | LT / D-pad down | LT / D-pad down | RB / D-pad down |
+| Brake, then reverse | B / D-pad down | LT / D-pad down | LT / D-pad down | RB / D-pad down |
 | Steer | D-pad left / right (or left stick) | same | same | same |
-| Turbo (rocket) | B | Y | Y | LB |
+| Turbo (rocket) | Y | Y | Y | LB |
 | Tight turn | A | RT | RT | LT |
 | Next special | RB | RB | RB | Y |
 | Previous special | LB | LB | LB | B |
@@ -74,9 +74,6 @@ D-pad steering ramps in over a fraction of a second instead of snapping to full 
 left stick also steers in every layout. While Menu is held, D-pad presses are view controls,
 not combo presses (they still nudge the gas, brake or steering).
 
-In Standard, turbo is on **B** and brake / reverse is on **Y** (swapped from the classic pad,
-so the rocket sits under your thumb).
-
 **Turbo** is a rocket. It kicks you forward the moment it lights, keeps pulling hard right up to
 turbo top speed, and works in the air: hold it after a jump (or a Spring Jack) and the rockets
 drive you forward and hold off the fall, so you carry much further. Flames shoot out of the two
@@ -99,7 +96,7 @@ the screen while you enter them, and the pause menu lists every move.
 | Move | Xbox inputs | Keyboard | Energy | What it does |
 | --- | --- | --- | --- | --- |
 | Scrap Mine | Right, Left, Down | L, J, K | 25 | Drops a spiked mine behind you. It blows up the next car to touch it (three out at a time). |
-| Cold Snap | Left, Right, Up | J, L, I | 35 | Coolant round that freezes the car it hits for about 2 seconds. Aims at your lock-on target. |
+| Cold Snap | Left, Right, Up | J, L, I | 35 | Coolant round that freezes the car it hits for about 2 seconds. Leaves straight and bends slightly toward a target ahead. |
 | Spring Jack | Up, Up, Left | I, I, J | 25 | Hydraulic jump. Hop walls, dodge mines. Ground only. |
 | Rivet Storm | Hold RT + Up, Down, Left, Right, Right, Left, Down, Up | Hold Ctrl + I, K, J, L, L, J, K, I | 50 | For 4 seconds the guns fire twice as fast, hit 1.5 times harder and never overheat. |
 | Fire Jug | Right, Left, Up | L, J, I | 35 | Lobs a jug of fuel ahead that leaves a burning pool. Cars in it catch fire. |
@@ -130,7 +127,7 @@ with previous / next special, and fire with the special button.
 | Special | What it does |
 | --- | --- |
 | Seeker | Homing missile; follows your lock-on target. |
-| Firebrand | Fast incendiary round; sets the target alight. |
+| Firebrand | Fast incendiary round; sets the target alight. Bends slightly toward a target ahead. |
 | Sledge | Slow, heavy rocket that fires straight and shoves what it hits. |
 
 Their numbers live in `data/specials.json`.
@@ -159,7 +156,9 @@ to the right stick.
 - **Status effects**: shielded, frozen, burning, cloaked and Rivet Storm, shown on the car and
   on the HUD.
 - **Rocket turbo**: a nitrous kick, a push that doesn't fade, thrust in the air, and flames out
-  the back. B is turbo in the Standard layout.
+  the back.
+- **Weapons curve slightly**: Firebrand, Cold Snap and the Tailgunner shots bend gently toward a
+  target in front of them. The Sledge flies dead straight and the Seeker still homes.
 - **Scrap Drones fight back**: they hunt you when you're close, fire their guns in bursts,
   drop mines or fire a Tailgunner round when you chase them, raise Bulwark when hurt, and throw
   Cold Snaps. They lose you while you're under Blackout.
