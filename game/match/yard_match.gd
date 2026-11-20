@@ -56,7 +56,11 @@ func _ready() -> void:
 	add_child(player)
 	player.global_transform = arena.player_spawn
 	player.reset_physics_interpolation()
+	player.add_to_group("players")
 	player.wrecked.connect(_on_player_wrecked)
+	player.combos.move_used.connect(_on_player_move)
+	player.combos.move_failed.connect(_on_player_move_failed)
+	player.shield_blocked.connect(_on_shield_blocked)
 	player.pickup_taken.connect(_on_pickup)
 	player.damaged.connect(_on_player_damaged)
 
@@ -203,9 +207,30 @@ func _on_player_wrecked(_v: ArcadeVehicle, _killer: Node) -> void:
 		camera.snap())
 
 
+func _on_player_move(_v: ArcadeVehicle, _id: String, move_name: String) -> void:
+	hud.flash_move(move_name.to_upper())
+
+
+func _on_player_move_failed(_v: ArcadeVehicle, id: String, reason: String) -> void:
+	match reason:
+		"energy":
+			hud.flash_move("NOT ENOUGH ENERGY", true)
+			GameAudio.play_ui("denied", 0.7)
+		"airborne":
+			hud.flash_move("%s NEEDS THE GROUND" % player.combos.move_name(id).to_upper(), true)
+		"frozen":
+			GameAudio.play_ui("denied", 0.5)
+
+
+func _on_shield_blocked(_v: ArcadeVehicle, _amount: float) -> void:
+	hud.shield_hit()
+
+
 func _on_pickup(_v: ArcadeVehicle, kind: String) -> void:
 	var labels := GameData.pickups()
 	var label := str(labels.get(kind, {}).get("label", kind))
+	if kind == "weapon" and player.specials.selected != "":
+		label = "%s x%d" % [player.specials.display_name(player.specials.selected), player.specials.count(player.specials.selected)]
 	hud.message("+ %s" % label, 1.4)
 
 

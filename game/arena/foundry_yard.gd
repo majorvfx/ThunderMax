@@ -331,6 +331,11 @@ func pickup_spots() -> Array:
 		["turbo", Vector3(70, 1.0, 0)],
 		["turbo", Vector3(-40, 1.0, 62)],
 		["turbo", Vector3(-73, 1.0, -62)],    # hidden pocket
+		["weapon", Vector3(-8, 4.0, -7.5)],   # furnace deck
+		["weapon", Vector3(45, 1.0, 0)],
+		["weapon", Vector3(-45, 1.0, 0)],
+		["weapon", Vector3(0, 1.0, 70)],
+		["weapon", Vector3(68, 3.4, 22)],     # top of the kicker
 	]
 
 

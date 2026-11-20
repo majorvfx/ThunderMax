@@ -22,6 +22,14 @@ class ControlFrame:
 	var fire_gun := false
 	var fire_special := false
 	var look_back := false
+	var combo_presses: Array[String] = []  ## D-pad combo presses this step, in order
+	var cycle_special := 0                 ## -1 previous, +1 next, 0 none
+
+	## Copy with the driving zeroed (used while frozen).
+	func idle() -> ControlFrame:
+		var f := ControlFrame.new()
+		f.look_back = look_back
+		return f
 
 
 ## Persistent drive state for one vehicle.

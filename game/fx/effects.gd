@@ -141,3 +141,18 @@ static func tracer(parent: Node, from: Vector3, to: Vector3) -> void:
 	var up := Vector3.UP if absf(dir.y) < 0.99 else Vector3.FORWARD
 	mi.global_transform = Transform3D(Basis.looking_at(dir, up), mid)
 	parent.get_tree().create_timer(0.05, false).timeout.connect(mi.queue_free)
+
+
+## Pale burst of frost where a Cold Snap round lands.
+static func frost_burst(parent: Node, pos: Vector3) -> void:
+	if parent == null or not parent.is_inside_tree():
+		return
+	var p := _burst(parent, pos, 18, 0.6, _particle_material("frost", Color(0.7, 0.9, 1.0), 2.0), 0.5)
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	p.emission_sphere_radius = 0.6
+	p.direction = Vector3.UP
+	p.spread = 180.0
+	p.initial_velocity_min = 2.0
+	p.initial_velocity_max = 6.0
+	p.gravity = Vector3(0, -6, 0)
+	p.color_ramp = _ramp([Color(0.9, 0.97, 1.0, 1.0), Color(0.5, 0.8, 1.0, 0.0)])

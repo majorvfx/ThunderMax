@@ -1,0 +1,35 @@
+{
+  "_note": "Pickup special weapons. Weapon crates in the arena hand out 'crate_amount' of a random one.",
+  "crate_amount": 2,
+  "max_ammo": 6,
+  "weapons": {
+    "seeker": {
+      "name": "Seeker",
+      "description": "Homing rocket. Follows whatever it was locked on to.",
+      "damage": 16.0,
+      "speed": 42.0,
+      "turn_rate_deg": 140.0,
+      "life_s": 4.0,
+      "cooldown": 0.6
+    },
+    "firebrand": {
+      "name": "Firebrand",
+      "description": "Fast straight rocket that leaves the target burning.",
+      "damage": 12.0,
+      "speed": 70.0,
+      "burn_s": 2.5,
+      "burn_dps": 5.0,
+      "life_s": 2.0,
+      "cooldown": 0.45
+    },
+    "sledge": {
+      "name": "Sledge",
+      "description": "Slow, heavy warhead. Huge damage and a hard shove.",
+      "damage": 38.0,
+      "speed": 32.0,
+      "impulse": 14000.0,
+      "life_s": 4.0,
+      "cooldown": 1.2
+    }
+  }
+}

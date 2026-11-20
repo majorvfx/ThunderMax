@@ -10,6 +10,7 @@ const ACTIONS := [
 	"accelerate", "brake", "steer_left", "steer_right",
 	"fire_gun", "fire_special", "special_prev", "special_next",
 	"turbo", "look_back", "pause", "tuning", "debug",
+	"combo_up", "combo_down", "combo_left", "combo_right",
 ]
 
 const PRESETS := ["modern", "classic"]
@@ -24,21 +25,21 @@ const PRESET_HELP := {
 	"modern": [
 		["Accelerate", "RT"], ["Brake / reverse", "LT"], ["Steer", "Left stick"],
 		["Machine gun", "RB"], ["Special weapon", "X"], ["Turbo", "A"],
-		["Look back", "B"], ["Cycle specials", "D-pad left / right"],
-		["Pause", "Menu"], ["Tuning panel", "View"],
+		["Look back", "B"], ["Cycle specials", "LB / Y"],
+		["Combo moves", "D-pad"], ["Pause", "Menu"], ["Tuning panel", "View"],
 	],
 	"classic": [
 		["Accelerate", "A"], ["Brake / reverse", "X"], ["Steer", "D-pad or left stick"],
 		["Machine gun", "B"], ["Special weapon", "Y"], ["Turbo", "LT"],
 		["Look back", "RT"], ["Cycle specials", "LB / RB"],
-		["Pause", "Menu"], ["Tuning panel", "View"],
+		["Combo moves", "D-pad"], ["Pause", "Menu"], ["Tuning panel", "View"],
 	],
 }
 
 const KEYBOARD_HELP := [
 	["Accelerate", "W / Up"], ["Brake / reverse", "S / Down"], ["Steer", "A D / Left Right"],
-	["Machine gun", "Space"], ["Special weapon", "K"], ["Turbo", "Shift"],
-	["Look back", "C"], ["Cycle specials", "Q / E"], ["Pause", "Esc"],
+	["Machine gun", "Space"], ["Special weapon", "F"], ["Turbo", "Shift"],
+	["Look back", "C"], ["Cycle specials", "Q / E"], ["Combo moves", "I J K L"], ["Pause", "Esc"],
 	["Tuning panel", "F1"], ["Debug readout", "F3"],
 ]
 
@@ -67,6 +68,11 @@ static func apply_preset(slot: int, device: int, preset: String, with_keyboard: 
 	_axis(slot, "steer_right", device, JOY_AXIS_LEFT_X, 1.0)
 	_button(slot, "pause", device, JOY_BUTTON_START)
 	_button(slot, "tuning", device, JOY_BUTTON_BACK)
+	# Combo moves are D-pad sequences in both layouts (remappable like everything else).
+	_button(slot, "combo_up", device, JOY_BUTTON_DPAD_UP)
+	_button(slot, "combo_down", device, JOY_BUTTON_DPAD_DOWN)
+	_button(slot, "combo_left", device, JOY_BUTTON_DPAD_LEFT)
+	_button(slot, "combo_right", device, JOY_BUTTON_DPAD_RIGHT)
 
 	if preset == "classic":
 		_button(slot, "accelerate", device, JOY_BUTTON_A)
@@ -86,8 +92,8 @@ static func apply_preset(slot: int, device: int, preset: String, with_keyboard: 
 		_button(slot, "fire_special", device, JOY_BUTTON_X)
 		_button(slot, "turbo", device, JOY_BUTTON_A)
 		_button(slot, "look_back", device, JOY_BUTTON_B)
-		_button(slot, "special_prev", device, JOY_BUTTON_DPAD_LEFT)
-		_button(slot, "special_next", device, JOY_BUTTON_DPAD_RIGHT)
+		_button(slot, "special_prev", device, JOY_BUTTON_LEFT_SHOULDER)
+		_button(slot, "special_next", device, JOY_BUTTON_Y)
 
 	if with_keyboard:
 		_keys(slot, "accelerate", [KEY_W, KEY_UP])
@@ -95,7 +101,7 @@ static func apply_preset(slot: int, device: int, preset: String, with_keyboard: 
 		_keys(slot, "steer_left", [KEY_A, KEY_LEFT])
 		_keys(slot, "steer_right", [KEY_D, KEY_RIGHT])
 		_keys(slot, "fire_gun", [KEY_SPACE])
-		_keys(slot, "fire_special", [KEY_K])
+		_keys(slot, "fire_special", [KEY_F])
 		_keys(slot, "special_prev", [KEY_Q])
 		_keys(slot, "special_next", [KEY_E])
 		_keys(slot, "turbo", [KEY_SHIFT])
@@ -103,6 +109,10 @@ static func apply_preset(slot: int, device: int, preset: String, with_keyboard: 
 		_keys(slot, "pause", [KEY_ESCAPE])
 		_keys(slot, "tuning", [KEY_F1])
 		_keys(slot, "debug", [KEY_F3])
+		_keys(slot, "combo_up", [KEY_I])
+		_keys(slot, "combo_down", [KEY_K])
+		_keys(slot, "combo_left", [KEY_J])
+		_keys(slot, "combo_right", [KEY_L])
 
 
 static func _button(slot: int, name: String, device: int, button: JoyButton) -> void:

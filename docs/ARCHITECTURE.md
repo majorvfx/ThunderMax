@@ -15,6 +15,10 @@ design.
   turbo) and the current `DriveState`, returns new forward speed, slide and target yaw rate.
   No physics engine calls.
 - `combat_rules.gd`: health, machine gun heat, ram and splash damage, pickup effects.
+- `combo_buffer.gd`: recognises D-pad combo sequences. Feed it directions with a timestamp; it
+  answers with a move id when a sequence from `data/combos.json` completes inside the window.
+- `status_effects.gd`: combo energy and per-move cooldowns, plus the timed shield, freeze and
+  burn effects on a car.
 - `vehicle_stats.gd`: every tuning number for a vehicle, loaded from JSON.
 - `game_data.gd`: JSON loading and saved tuning sessions.
 
@@ -27,6 +31,13 @@ design.
   engine sound).
 - `input/`: per-player actions (`p1_accelerate`...) with Modern and Classic Xbox layouts. Built
   for up to four players, one pad each, for split-screen in Milestone 3.
+- `weapons/combo_controller.gd`: reads the combo presses from the car's `ControlFrame`, runs
+  them through `ComboBuffer`, spends energy and performs the move. Bots call `request_move()`.
+- `weapons/special_weapons.gd`: special weapon ammo, cycling and firing.
+- `weapons/projectile.gd`, `scrap_mine.gd`, `fire_pool.gd`: the things combos and specials
+  leave in the world. Projectiles sweep a ray each step so fast shots don't pass through walls.
+- `ai/drone_driver.gd`: Scrap Drone brain. Produces a `ControlFrame` like a player does, so bots
+  and players drive through the same code.
 - `camera/chase_camera.gd`, `weapons/machine_gun.gd`, `pickups/`, `props/`, `arena/`, `ui/`,
   `audio/`, `fx/`.
 - `match/yard_match.gd`: the Milestone 1 sandbox (spawning, respawns, messages, menus).

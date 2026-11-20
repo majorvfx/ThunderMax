@@ -7,7 +7,8 @@ extends SceneTree
 ## 1. Core rule tests (pure logic, no physics).
 ## 2. Handling measurements on a flat test pad, checked against
 ##    data/handling_targets.json and written to docs/handling_report.md.
-## 3. Arena smoke test: drones lap the Foundry Yard and the gun wrecks a drone.
+## 3. Combo moves and special weapons on the test pad.
+## 4. Arena smoke test: drones lap the Foundry Yard, fight back, and the gun wrecks a drone.
 
 var _pass := 0
 var _fail := 0
@@ -33,8 +34,12 @@ func _run() -> void:
 	_test_combat_rules()
 	_test_input()
 	_test_remap()
+	_test_combo_buffer()
+	_test_status_effects()
 	print("== Handling measurements ==")
 	await _handling_measurements()
+	print("== Combo moves and specials ==")
+	await _combo_moves()
 	print("== Arena smoke test ==")
 	await _arena_smoke()
 	_write_report()
@@ -290,6 +295,77 @@ func _test_remap() -> void:
 	InputSetup.apply_preset(1, -1, "modern", true)
 
 
+func _test_combo_buffer() -> void:
+	var data: Dictionary = GameData.load_json(GameData.COMBOS_PATH)
+	var moves: Dictionary = data["moves"]
+	check(moves.size() >= 5, "combos.json has at least five moves")
+	var seen := {}
+	for id in moves:
+		var key := ",".join(moves[id]["inputs"])
+		check(not seen.has(key), "combo %s has its own inputs" % id)
+		seen[key] = true
+		check(moves[id]["inputs"].size() >= 3, "combo %s takes three or more presses" % id)
+	var b := ComboBuffer.new()
+	b.configure(moves, 0.45)
+	# Each move fires on its own sequence, tapped 0.1 s apart.
+	var t := 10.0
+	for id in moves:
+		var got := ""
+		for d in moves[id]["inputs"]:
+			t += 0.1
+			got = b.push(d, t)
+		check(got == id, "combo buffer recognises %s" % id)
+		check(b.pending().is_empty(), "combo buffer clears after %s" % id)
+		t += 1.0
+	# Too slow: a gap longer than the window starts over.
+	check(b.push("down", 20.0) == "" and b.push("down", 20.1) == "", "slow combo: first presses")
+	check(b.push("up", 20.8) == "", "slow combo does not fire")
+	check(b.pending() == ["up"], "a late press starts a new sequence")
+	# Steering-style taps on left and right alone never fire a move.
+	b.reset()
+	var fired := false
+	for i in 12:
+		if b.push(["left", "right"][i % 2], 30.0 + i * 0.1) != "":
+			fired = true
+	check(not fired, "left/right steering taps fire nothing")
+	# Longest sequence wins when two moves end on the same presses.
+	var nested := ComboBuffer.new()
+	nested.configure({"short": {"inputs": ["down", "up"]}, "long": {"inputs": ["down", "down", "up"]}}, 0.45)
+	nested.push("down", 0.0)
+	nested.push("down", 0.1)
+	check(nested.push("up", 0.2) == "long", "longest matching combo wins")
+
+
+func _test_status_effects() -> void:
+	var st := StatusEffects.new()
+	st.configure(100.0, 6.0)
+	check(st.try_spend("jack", 25.0, 0.5) and st.energy == 75.0, "a move spends its energy")
+	check(not st.try_spend("jack", 25.0, 0.5), "a move is blocked by its cooldown")
+	check(st.try_spend("other", 25.0, 0.5), "cooldowns are per move")
+	st.tick(0.6)
+	near(st.energy, 50.0 + 3.6, 0.001, "energy regenerates")
+	check(st.try_spend("jack", 25.0, 0.5), "a move is ready after its cooldown")
+	check(not st.try_spend("big", 100.0, 0.5), "a move needs enough energy")
+	st.reset()
+	st.freeze(2.0)
+	check(st.is_frozen(), "freeze freezes")
+	st.tick(2.1)
+	check(not st.is_frozen(), "freeze wears off")
+	st.ignite(2.0, 5.0, null)
+	near(st.tick(1.0), 5.0, 0.001, "burning deals damage over time")
+	near(st.tick(5.0), 5.0, 0.001, "burning stops when its time runs out")
+	check(not st.is_burning(), "burn wears off")
+	st.ignite(3.0, 5.0, null)
+	st.freeze(3.0)
+	st.shield(2.0)
+	check(st.is_shielded() and not st.is_burning() and not st.is_frozen(), "the shield puts out fire and thaws")
+	st.freeze(2.0)
+	st.ignite(2.0, 5.0, null)
+	check(not st.is_frozen() and not st.is_burning(), "the shield blocks freeze and fire")
+	st.tick(2.1)
+	check(not st.is_shielded(), "the shield wears off")
+
+
 # --- Handling on a test pad -----------------------------------------------------------
 
 func _make_pad() -> Node3D:
@@ -520,12 +596,195 @@ func _fmt(x: Variant) -> String:
 	return str(x)
 
 
+# --- Combo moves and specials -----------------------------------------------------------
+
+## Taps a D-pad sequence the way a player would: one press every few physics steps.
+func _tap(drv: ScriptedDriver, seq: Array) -> void:
+	for d in seq:
+		drv.frame.combo_presses.append(d)
+		await _frames(4)
+
+
+func _inputs(id: String) -> Array:
+	return GameData.load_json(GameData.COMBOS_PATH)["moves"][id]["inputs"]
+
+
+func _count_nodes(parent: Node, script_class: String) -> Array:
+	var out := []
+	for c in parent.get_children():
+		if c.get_script() != null and c.get_script().get_global_name() == script_class:
+			out.append(c)
+	return out
+
+
+func _combo_moves() -> void:
+	var world := _make_pad()
+	var pair := await _spawn_settled(world, Vector3(0, 1.0, 0))
+	var v: ArcadeVehicle = pair[0]
+	var drv: ScriptedDriver = pair[1]
+	var used: Array[String] = []
+	var failed: Array[String] = []
+	v.combos.move_used.connect(func(_v, id, _n): used.append(id))
+	v.combos.move_failed.connect(func(_v, id, why): failed.append("%s:%s" % [id, why]))
+	var target: ArcadeVehicle = _spawn(world, "scrap_drone", Vector3(0, 1.0, -22), 0.0)[0]
+	await _frames(45)
+
+	# Spring Jack: down, down, up launches the car.
+	var y0 := v.global_position.y
+	var e0 := v.status.energy
+	await _tap(drv, _inputs("spring_jack"))
+	var peak := y0
+	for i in 40:
+		await physics_frame
+		peak = maxf(peak, v.global_position.y)
+	check("spring_jack" in used, "Spring Jack fires from its D-pad combo")
+	check(peak - y0 > 2.0, "Spring Jack lifts the car (%.1f m)" % (peak - y0))
+	check(v.status.energy < e0, "Spring Jack costs energy")
+	_measure["spring_jack_height_m"] = peak - y0
+	await _frames(90)
+
+	# Bulwark: no damage while it is up.
+	v.status.reset()
+	await _tap(drv, _inputs("bulwark"))
+	check(v.status.is_shielded(), "Bulwark raises the shield")
+	var hp := v.health.current
+	var blocked := [0.0]
+	v.shield_blocked.connect(func(_v, amount): blocked[0] += amount)
+	v.take_damage(20.0, target)
+	check(v.health.current == hp and blocked[0] == 20.0, "Bulwark blocks damage")
+	v.status.shield_time = 0.0
+	v.take_damage(5.0, target)
+	check(v.health.current == hp - 5.0, "damage lands once Bulwark drops")
+
+	# Not enough energy: the move fails and nothing happens.
+	v.status.reset()
+	v.status.energy = 10.0
+	await _tap(drv, _inputs("bulwark"))
+	check(not v.status.is_shielded() and "bulwark:energy" in failed, "Bulwark needs energy")
+
+	# Cold Snap: freezes the drone in front.
+	v.status.reset()
+	await _tap(drv, _inputs("cold_snap"))
+	var t := 0.0
+	while not target.status.is_frozen() and t < 2.0:
+		await physics_frame
+		t += 1.0 / 60.0
+	check(target.status.is_frozen(), "Cold Snap freezes the car in front (%.2f s)" % t)
+	# A frozen car cannot drive.
+	var tdrv: ScriptedDriver = target.driver
+	tdrv.frame.throttle = 1.0
+	var tz := target.global_position
+	await _frames(40)
+	check(target.global_position.distance_to(tz) < 1.0, "a frozen car cannot drive")
+	await _frames(120)
+	check(not target.status.is_frozen(), "the freeze thaws")
+	tdrv.frame.throttle = 0.0
+	await _frames(60)
+
+	# Scrap Mine: dropped behind, blows up the next car over it.
+	v.status.reset()
+	await _tap(drv, _inputs("scrap_mine"))
+	var mines := get_nodes_in_group("mines")
+	check(mines.size() == 1, "Scrap Mine drops a mine")
+	if mines.size() == 1:
+		var mine: Node3D = mines[0]
+		var behind := (mine.global_position - v.global_position).dot(v.global_transform.basis.z)
+		check(behind > 1.5, "the mine lands behind the car")
+		await _frames(45)
+		var thp := target.health.current
+		target.global_transform = Transform3D(Basis.IDENTITY, mine.global_position + Vector3.UP * 0.8)
+		target.linear_velocity = Vector3.ZERO
+		target.reset_physics_interpolation()
+		await _frames(10)
+		check(target.health.current < thp, "the mine damages the car that hits it")
+		check(not is_instance_valid(mine) or mine.is_queued_for_deletion(), "the mine is used up")
+	target.global_transform = Transform3D(Basis.IDENTITY, Vector3(0, 1.0, -22))
+	target.linear_velocity = Vector3.ZERO
+	target.reset_physics_interpolation()
+	target.health.current = target.stats.max_health
+	await _frames(45)
+
+	# Fire Jug: a lobbed bomb that leaves burning fuel.
+	v.status.reset()
+	await _tap(drv, _inputs("fire_jug"))
+	var pools: Array = []
+	t = 0.0
+	while pools.is_empty() and t < 3.0:
+		await physics_frame
+		t += 1.0 / 60.0
+		pools = _count_nodes(world, "FirePool")
+	check(not pools.is_empty(), "Fire Jug leaves a fire pool")
+	if not pools.is_empty():
+		var pool: Node3D = pools[0]
+		var lob := _flat(pool.global_position - v.global_position).length()
+		check(lob > 8.0, "Fire Jug is thrown ahead (%.1f m)" % lob)
+		_measure["fire_jug_range_m"] = lob
+		var thp := target.health.current
+		target.global_transform = Transform3D(Basis.IDENTITY, pool.global_position + Vector3.UP * 0.8)
+		target.linear_velocity = Vector3.ZERO
+		target.reset_physics_interpolation()
+		await _frames(60)
+		check(target.status.is_burning(), "the fire pool sets cars alight")
+		check(target.health.current < thp, "burning hurts")
+	# The shield puts the fire out.
+	target.combos.request_move("bulwark")
+	check(not target.status.is_burning(), "Bulwark puts out the fire")
+	target.status.reset()
+	target.health.current = target.stats.max_health
+	target.global_transform = Transform3D(Basis.IDENTITY, Vector3(0, 1.0, -22))
+	target.linear_velocity = Vector3.ZERO
+	target.reset_physics_interpolation()
+	await _frames(45)
+
+	# Weapon crates and special weapons.
+	check(v.specials.total() == 0, "no special weapons at the start")
+	check(v.apply_pickup("weapon", 2), "a weapon crate gives a special")
+	check(v.specials.total() == 2 and v.specials.selected != "", "the crate adds two shots and selects them")
+	v.specials.clear()
+	v.specials.add("seeker", 2)
+	v.specials.add("sledge", 1)
+	drv.frame.cycle_special = 1
+	await _frames(2)
+	check(v.specials.selected == "sledge", "next special cycles the weapon")
+	drv.frame.cycle_special = -1
+	await _frames(2)
+	check(v.specials.selected == "seeker", "previous special cycles back")
+	# Seeker: aimed off to the side, it still homes in on the drone.
+	v.global_transform = Transform3D(Basis(Vector3.UP, deg_to_rad(8.0)), v.global_position)
+	v.reset_physics_interpolation()
+	await _frames(10)
+	var thp2 := target.health.current
+	drv.frame.fire_special = true
+	await _frames(2)
+	drv.frame.fire_special = false
+	t = 0.0
+	while target.health.current >= thp2 and t < 2.0:
+		await physics_frame
+		t += 1.0 / 60.0
+	check(target.health.current < thp2, "the Seeker hits the drone (%.2f s)" % t)
+	check(v.specials.count("seeker") == 1, "firing a special uses one shot")
+	# Frozen cars can't fire specials or use combos.
+	v.status.freeze(1.0)
+	drv.frame.fire_special = true
+	await _frames(10)
+	drv.frame.fire_special = false
+	check(v.specials.count("seeker") == 1, "a frozen car cannot fire specials")
+	failed.clear()
+	await _tap(drv, _inputs("bulwark"))
+	check("bulwark:frozen" in failed, "a frozen car cannot use combos")
+	world.queue_free()
+	await _frames(5)
+
+
 # --- Arena smoke test ---------------------------------------------------------------
 
 func _arena_smoke() -> void:
 	var m := YardMatch.new()
 	root.add_child(m)
 	await _frames(30)
+	# Laps first: with nobody to hunt, every drone should keep driving its route.
+	for d in m.drones:
+		(d.driver as DroneDriver).aggressive = false
 	var start_pos: Array[Vector3] = []
 	var travelled: Array[float] = []
 	for d in m.drones:
@@ -544,10 +803,29 @@ func _arena_smoke() -> void:
 		check(travelled[k] > 200.0, "drone %d keeps lapping (%.0f m in 25 s)" % [k + 1, travelled[k]])
 		check(m.drones[k].global_transform.basis.y.y > 0.5, "drone %d is on its wheels" % (k + 1))
 
-	# Gun test: park a drone in front of the player and hold the trigger.
+	# Drones fight back: park the player and let them hunt.
 	var player := m.player
 	var scripted := ScriptedDriver.new()
 	player.driver = scripted
+	var drone_moves: Array[String] = []
+	for d in m.drones:
+		(d.driver as DroneDriver).aggressive = true
+		d.combos.move_used.connect(func(_v, id, _n): drone_moves.append(id))
+	var hp0 := player.health.current
+	var hunt := 0.0
+	while player.health.current >= hp0 and hunt < 30.0 and player.is_alive():
+		await physics_frame
+		hunt += 1.0 / 60.0
+	check(player.health.current < hp0 or not player.is_alive(), "drones hunt and damage the player (%.1f s)" % hunt)
+	_measure["drones_first_hit_on_player_s"] = hunt
+	for d in m.drones:
+		(d.driver as DroneDriver).aggressive = false
+	player.status.reset()
+	if not player.is_alive():
+		player.respawn(Transform3D(Basis.IDENTITY, Vector3(-10, 1.2, 70)))
+	player.health.current = player.stats.max_health
+
+	# Gun test: park a drone in front of the player and hold the trigger.
 	var target: ArcadeVehicle = m.drones[0]
 	target.driver = ScriptedDriver.new()
 	player.global_transform = Transform3D(Basis.IDENTITY, Vector3(-10, 1.2, 70))

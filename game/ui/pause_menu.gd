@@ -14,6 +14,7 @@ var _fps_btn: Button
 var _quality_btn: Button
 var _remap_btn: Button
 var _help: GridContainer
+var _moves: VBoxContainer
 var _remap: RemapScreen
 
 
@@ -57,6 +58,10 @@ func _ready() -> void:
 	_help.add_theme_constant_override("h_separation", 18)
 	_help.add_theme_constant_override("v_separation", 4)
 	row.add_child(_help)
+	_moves = VBoxContainer.new()
+	_moves.add_theme_constant_override("separation", 4)
+	row.add_child(_moves)
+	_build_move_list()
 	_remap = RemapScreen.new()
 	add_child(_remap)
 	_remap.closed.connect(_on_remap_closed)
@@ -130,3 +135,22 @@ func _refresh() -> void:
 		_help.add_child(UiStyle.label(InputBindings.LABELS[a], 16))
 		_help.add_child(UiStyle.label(InputBindings.pad_text(1, a), 16))
 		_help.add_child(UiStyle.label(InputBindings.key_text(1, a), 16, Color(0.7, 0.66, 0.6)))
+
+
+## Combo move list from data/combos.json. Inputs are written as words because
+## the placeholder font has no arrow glyphs.
+func _build_move_list() -> void:
+	var accent := Color(0.95, 0.6, 0.2)
+	_moves.add_child(UiStyle.label("COMBO MOVES", 16, accent))
+	_moves.add_child(UiStyle.label("Tap the combo directions quickly", 14, Color(0.7, 0.66, 0.6)))
+	var data: Variant = GameData.load_json(GameData.COMBOS_PATH)
+	if typeof(data) != TYPE_DICTIONARY:
+		return
+	var moves: Dictionary = data.get("moves", {})
+	for id in moves:
+		var m: Dictionary = moves[id]
+		var inputs := []
+		for d in m.get("inputs", []):
+			inputs.append(str(d).capitalize())
+		_moves.add_child(UiStyle.label("%s  (%d energy)" % [m.get("name", id), int(m.get("cost", 0))], 16))
+		_moves.add_child(UiStyle.label("   " + ", ".join(inputs), 15, Color(0.7, 0.66, 0.6)))

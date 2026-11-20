@@ -7,6 +7,8 @@ var device := -1   ## -1 = any connected pad
 var enabled := true
 var _frame := ArcadeHandling.ControlFrame.new()
 
+const COMBO_DIRECTIONS := ["up", "down", "left", "right"]
+
 
 func _init(player_slot: int = 1, pad_device: int = -1) -> void:
 	slot = player_slot
@@ -23,6 +25,8 @@ func get_frame(_vehicle: Node, _dt: float) -> ArcadeHandling.ControlFrame:
 		f.fire_gun = false
 		f.fire_special = false
 		f.look_back = false
+		f.combo_presses.clear()
+		f.cycle_special = 0
 		return f
 	f.throttle = Input.get_action_strength(_a("accelerate"))
 	f.brake = Input.get_action_strength(_a("brake"))
@@ -30,6 +34,14 @@ func get_frame(_vehicle: Node, _dt: float) -> ArcadeHandling.ControlFrame:
 	f.fire_gun = Input.is_action_pressed(_a("fire_gun"))
 	f.fire_special = Input.is_action_pressed(_a("fire_special"))
 	f.look_back = Input.is_action_pressed(_a("look_back"))
+	# D-pad combo presses (read from the remappable combo actions).
+	for dir in COMBO_DIRECTIONS:
+		if Input.is_action_just_pressed(_a("combo_" + dir)):
+			f.combo_presses.append(dir)
+	if Input.is_action_just_pressed(_a("special_next")):
+		f.cycle_special = 1
+	elif Input.is_action_just_pressed(_a("special_prev")):
+		f.cycle_special = -1
 
 	# Stick beats D-pad/keys when it is pushed past the deadzone.
 	var stick := _stick_x()

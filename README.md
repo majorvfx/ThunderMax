@@ -3,9 +3,10 @@
 An original vehicular-combat arena game: dark, serious, with a little dark humor.
 Built in Godot 4, structured so the game rules and data can move to Unreal later.
 
-This is the **Milestone 1 build (first playable)**: one car, one arena, the machine gun,
-health and turbo pickups, Xbox controller support, and the arcade handling model with a
-live tuning panel. All art and audio are placeholders made in code.
+This build is **Milestone 1 (first playable)** plus the first part of **Milestone 2 (core
+combat)**: one car, one arena, the machine gun, D-pad combo moves with an energy meter, pickup
+special weapons, drones that fight back, Xbox controller support, and the arcade handling model
+with a live tuning panel. All art and audio are placeholders made in code.
 
 ![Title](docs/screenshots/title.png)
 
@@ -20,7 +21,8 @@ To skip the editor, run the game directly:
 works as a desktop shortcut).
 
 Press **A** or **Enter** on the title screen. You start in the Foundry Yard in Rustjaw, with
-three Scrap Drones running laps. Wreck them, grab pickups, set off the fuel drums.
+three Scrap Drones running laps. Get close and they turn on you. Wreck them, grab pickups and
+weapon crates, set off the fuel drums.
 
 ## Controls
 
@@ -33,10 +35,11 @@ Every action can also be remapped (see **Remapping** below); the table shows the
 | Brake, then reverse | LT | X | S / Down |
 | Steer | Left stick | D-pad or left stick | A, D / Left, Right |
 | Machine gun | RB | B | Space |
-| Special weapon (Milestone 2) | X | Y | K |
+| Special weapon | X | Y | F |
 | Turbo | A | LT | Shift |
 | Look back | B | RT | C |
-| Cycle specials (Milestone 2) | D-pad left / right | LB / RB | Q / E |
+| Previous / next special | LB / Y | LB / RB | Q / E |
+| Combo moves | D-pad | D-pad | I, K, J, L (up, down, left, right) |
 | Pause | Menu | Menu | Esc |
 | Handling tuning panel | View | View | F1 |
 | Debug readout | | | F3 |
@@ -46,7 +49,45 @@ Every action can also be remapped (see **Remapping** below); the table shows the
 ramps in over a fraction of a second instead of snapping to full lock. **Modern** uses the
 analog triggers for throttle and brake.
 
-**Power slide:** hold brake and steer at speed.
+**Power slide:** hold brake and steer at speed. A dedicated drift control is planned for a
+later milestone.
+
+### Combo moves
+
+Tap a D-pad sequence quickly (each press within about half a second of the last). Each move
+costs combo energy (the ENERGY bar at the bottom of the status panel), which refills on its own. The notches on the bar
+are 25 energy apart. Your presses show as arrows at the bottom of the screen while you enter
+them, and the pause menu lists every move.
+
+| Move | Inputs | Energy | What it does |
+| --- | --- | --- | --- |
+| Spring Jack | Down, Down, Up | 25 | Hydraulic rams kick the car into the air. Hop walls, dodge mines. |
+| Bulwark | Left, Right, Down | 50 | Welded plates slam shut: no damage for 3 seconds. Puts out fire and thaws ice. |
+| Cold Snap | Right, Left, Up | 35 | A coolant round that freezes the car it hits for about 2 seconds. Aims at your lock-on target. |
+| Scrap Mine | Up, Up, Down | 25 | Drops a spiked charge behind you. Blows up the next car to touch it (three out at a time). |
+| Fire Jug | Up, Down, Up | 35 | Lobs a jug of fuel ahead that leaves a burning pool. Cars in it catch fire. |
+
+A frozen car can't drive, fire specials or use combos. Spring Jack only works on the ground.
+The combo directions are their own actions (Combo up/down/left/right), so they can be remapped
+like everything else. In the Classic layout the D-pad also steers; only the exact sequences
+above fire a move, and every one ends on a direction that steering doesn't use.
+
+Names, inputs, costs and effects all live in `data/combos.json`.
+
+### Special weapons
+
+Weapon crates (yellow band) give two shots of a random special. Hold up to six of each, switch
+with previous / next special, and fire with the special button.
+
+| Special | What it does |
+| --- | --- |
+| Seeker | Homing missile; follows your lock-on target. |
+| Firebrand | Fast incendiary round; sets the target alight. |
+| Sledge | Slow, heavy rocket that fires straight and shoves what it hits. |
+
+Their numbers live in `data/specials.json`.
+
+![Bulwark and a combo in progress](docs/screenshots/combo_bulwark.png)
 
 ### Remapping
 
@@ -63,6 +104,19 @@ to the right stick.
 
 ![Remap controls](docs/screenshots/remap_controls.png)
 
+## What's in Milestone 2 so far
+
+- **Five combo moves** on the D-pad with an energy meter (see above).
+- **Three special weapons** from weapon crates, with ammo per weapon and cycling.
+- **Status effects**: shielded, frozen and burning, shown on the car and on the HUD.
+- **Scrap Drones fight back**: they hunt you when you're close, fire their guns in bursts,
+  drop mines when you chase them, raise Bulwark when hurt, and throw Cold Snaps.
+
+Still to come in Milestone 2: more cars with their own specials, a second arena with
+destructible scenery, and bot difficulty levels.
+
+![Cold Snap](docs/screenshots/cold_snap.png)
+
 ## What's in Milestone 1
 
 - **Rustjaw**, a plow-nosed coupe, with raycast suspension and our own arcade handling model.
@@ -71,8 +125,8 @@ to the right stick.
   north-west corner.
 - **Twin Rivet Guns** with unlimited ammo and an overheat bar, light aim assist and a lock-on
   bracket.
-- **Scrap Drones**: driverless target cars that lap the yard (they don't fight back yet).
-- **Pickups**: Patch Kits (armor) and Nitro Cans (turbo).
+- **Scrap Drones**: driverless cars that lap the yard.
+- **Pickups**: Patch Kits (armor), Nitro Cans (turbo) and, from Milestone 2, weapon crates.
 - **Ram damage** from hard hits, rumble on big hits, wreck and respawn.
 - **Frame rate**: physics always runs at 60 Hz. Display is Auto (60, dropping to a steady 30 on
   slower machines), 30, or 60. Graphics presets Low, Medium, High.
@@ -94,16 +148,18 @@ godot --headless --path . --import
 godot --headless --path . --fixed-fps 60 --script res://tests/run_tests.gd
 ```
 
-The suite checks the rules (damage, heat, pickups, input layouts), measures the handling on a
-test pad against `data/handling_targets.json`, and runs a smoke test in the arena (drones keep
-lapping, the gun wrecks a drone, pickups heal). It rewrites `docs/handling_report.md`.
+The suite checks the rules (damage, heat, pickups, input layouts, remapping, combo recognition,
+energy and status effects), measures the handling on a test pad against
+`data/handling_targets.json`, fires every combo move and a special on the test pad, and runs a
+smoke test in the arena (drones keep lapping, drones hunt and damage the player, the gun wrecks a
+drone, pickups heal). It rewrites `docs/handling_report.md`.
 
 ## Project layout
 
 | Folder | What lives there |
 | --- | --- |
-| `core/` | Engine-agnostic rules: handling model, combat rules, stats, data loading |
-| `data/` | Vehicles, weapons, pickups and handling targets as JSON |
+| `core/` | Engine-agnostic rules: handling model, combat rules, combo recognition, status effects, stats, data loading |
+| `data/` | Vehicles, weapons, combo moves, specials, pickups and handling targets as JSON |
 | `game/` | Godot layer: vehicle body, camera, input, arena, UI, audio, effects |
 | `assets/audio/` | Placeholder sounds and music (regenerate with `tools/make_placeholder_audio.py`) |
 | `tests/` | Headless test suite |

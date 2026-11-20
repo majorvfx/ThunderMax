@@ -11,6 +11,9 @@ var _smoke: CPUParticles3D
 var _fire: CPUParticles3D
 var _beacon: MeshInstance3D
 var _beacon_time := 0.0
+var _shield_shell: MeshInstance3D
+var _ice_shell: MeshInstance3D
+var _shell_time := 0.0
 
 
 func build(v: ArcadeVehicle, paint_name: String) -> void:
@@ -22,6 +25,7 @@ func build(v: ArcadeVehicle, paint_name: String) -> void:
 		_build_rustjaw()
 	_build_wheels()
 	_build_damage_fx()
+	_build_status_shells()
 
 
 func _process(delta: float) -> void:
@@ -38,7 +42,16 @@ func _process(delta: float) -> void:
 		w.get_child(0).rotation.x = -_wheel_spin
 	var hp := vehicle.health.fraction()
 	_smoke.emitting = vehicle.is_alive() and hp < 0.5
-	_fire.emitting = vehicle.is_alive() and hp < 0.25
+	_fire.emitting = vehicle.is_alive() and (hp < 0.25 or vehicle.status.is_burning())
+	_shell_time += delta
+	var shielded := vehicle.status.is_shielded()
+	_shield_shell.visible = shielded
+	if shielded:
+		# Flickers in its last second so you know it's about to drop.
+		var t := vehicle.status.shield_time
+		_shield_shell.visible = t > 1.0 or fmod(_shell_time, 0.16) < 0.1
+		_shield_shell.rotation.y = sin(_shell_time * 3.0) * 0.05
+	_ice_shell.visible = vehicle.status.is_frozen()
 	if _beacon != null:
 		_beacon_time += delta
 		_beacon.visible = fmod(_beacon_time, 0.9) < 0.45
@@ -146,3 +159,38 @@ func _build_damage_fx() -> void:
 	_fire.mesh = fq
 	_fire.color_ramp = Effects._ramp([Color(1, 0.9, 0.5, 1), Color(1, 0.4, 0.1, 0.8), Color(0.3, 0.05, 0.0, 0.0)])
 	add_child(_fire)
+
+
+func _build_status_shells() -> void:
+	# Bulwark: a cage of glowing welded plates around the car.
+	var plate := StandardMaterial3D.new()
+	plate.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	plate.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	plate.albedo_color = Color(1.0, 0.55, 0.15, 0.28)
+	plate.emission_enabled = true
+	plate.emission = Color(1.0, 0.5, 0.12)
+	plate.emission_energy_multiplier = 1.5
+	plate.cull_mode = BaseMaterial3D.CULL_DISABLED
+	_shield_shell = VehicleVisualParts.box(self, Vector3(2.9, 1.9, 5.3), Vector3(0, 0.35, 0), plate)
+	var frame_mat := StandardMaterial3D.new()
+	frame_mat.albedo_color = Color(1.0, 0.7, 0.3)
+	frame_mat.emission_enabled = true
+	frame_mat.emission = Color(1.0, 0.6, 0.2)
+	frame_mat.emission_energy_multiplier = 3.0
+	for x in [-1.45, 1.45]:
+		for z in [-2.65, 0.0, 2.65]:
+			VehicleVisualParts.box(_shield_shell, Vector3(0.08, 1.9, 0.08), Vector3(x, 0, z), frame_mat)
+	for z in [-2.65, 2.65]:
+		VehicleVisualParts.box(_shield_shell, Vector3(2.9, 0.08, 0.08), Vector3(0, 0.95, z), frame_mat)
+	_shield_shell.visible = false
+	# Cold Snap: the car is caked in frost.
+	var ice := StandardMaterial3D.new()
+	ice.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	ice.albedo_color = Color(0.75, 0.9, 1.0, 0.55)
+	ice.roughness = 0.1
+	ice.metallic = 0.2
+	ice.emission_enabled = true
+	ice.emission = Color(0.5, 0.75, 1.0)
+	ice.emission_energy_multiplier = 0.6
+	_ice_shell = VehicleVisualParts.box(self, Vector3(2.2, 1.5, 4.6), Vector3(0, 0.3, 0), ice)
+	_ice_shell.visible = false

@@ -1,4 +1,17 @@
 {
-  "health": { "amount": 35, "respawn_seconds": 15, "label": "Patch Kit" },
-  "turbo": { "amount": 100, "respawn_seconds": 12, "label": "Nitro Can" }
+  "health": {
+    "amount": 35,
+    "respawn_seconds": 15,
+    "label": "Patch Kit"
+  },
+  "turbo": {
+    "amount": 100,
+    "respawn_seconds": 12,
+    "label": "Nitro Can"
+  },
+  "weapon": {
+    "amount": 2,
+    "respawn_seconds": 14,
+    "label": "Weapon Crate"
+  }
 }

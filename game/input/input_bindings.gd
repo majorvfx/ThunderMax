@@ -25,6 +25,10 @@ const LABELS := {
 	"pause": "Pause",
 	"tuning": "Tuning panel",
 	"debug": "Debug readout",
+	"combo_up": "Combo up",
+	"combo_down": "Combo down",
+	"combo_left": "Combo left",
+	"combo_right": "Combo right",
 }
 
 const _BUTTON_NAMES := {

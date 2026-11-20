@@ -1,0 +1,58 @@
+{
+  "_note": "Thunder Max combo moves. Inputs are D-pad sequences (combo_up/down/left/right actions, remappable). Each press must come within window_s of the last. Edit freely: names, inputs, costs and effects are all ours.",
+  "window_s": 0.45,
+  "energy_max": 100,
+  "energy_regen": 6.0,
+  "moves": {
+    "spring_jack": {
+      "name": "Spring Jack",
+      "inputs": ["down", "down", "up"],
+      "cost": 25,
+      "cooldown": 0.6,
+      "description": "Hydraulic rams kick the car into the air. Hop walls, dodge mines, land on roofs.",
+      "launch_speed": 11.0
+    },
+    "bulwark": {
+      "name": "Bulwark",
+      "inputs": ["left", "right", "down"],
+      "cost": 50,
+      "cooldown": 1.0,
+      "description": "Welded plates slam shut around the car. Takes no damage for a few seconds.",
+      "duration": 3.0
+    },
+    "cold_snap": {
+      "name": "Cold Snap",
+      "inputs": ["right", "left", "up"],
+      "cost": 35,
+      "cooldown": 0.8,
+      "description": "A coolant round that seizes the target's engine and wheels.",
+      "freeze_s": 2.2,
+      "damage": 4.0,
+      "speed": 75.0
+    },
+    "scrap_mine": {
+      "name": "Scrap Mine",
+      "inputs": ["up", "up", "down"],
+      "cost": 25,
+      "cooldown": 0.5,
+      "description": "Drops a spiked charge behind you. Arms after half a second.",
+      "damage": 25.0,
+      "radius": 2.4,
+      "arm_s": 0.5,
+      "life_s": 30.0,
+      "max_per_car": 3
+    },
+    "fire_jug": {
+      "name": "Fire Jug",
+      "inputs": ["up", "down", "up"],
+      "cost": 35,
+      "cooldown": 0.8,
+      "description": "A lobbed jug of burning fuel. Leaves a fire pool that sets cars alight.",
+      "damage": 10.0,
+      "pool_radius": 4.5,
+      "pool_s": 4.0,
+      "burn_s": 3.0,
+      "burn_dps": 6.0
+    }
+  }
+}
