@@ -1,6 +1,6 @@
 class_name ArcadeVehicle
 extends RigidBody3D
-## Godot layer for a Thunder Max vehicle.
+## Godot layer for a Iron Carnage vehicle.
 ##
 ## Raycast suspension holds the body up; ArcadeHandling (engine-agnostic) decides
 ## forward speed, slide and yaw; this script converts between world space and car
@@ -42,6 +42,8 @@ var wheel_distance: Array[float] = [0.6, 0.6, 0.6, 0.6]
 var wheel_contact: Array[bool] = [false, false, false, false]
 var last_impact := 0.0   ## m/s of the latest impact, for camera shake and sound
 var last_attacker: Node = null
+var surface := ""   ## what the ground is under the car: "", "ice" or "mud" (from the arena)
+var _arena: Node = null
 
 var _last_out_velocity := Vector3.ZERO
 var _has_last := false
@@ -57,6 +59,9 @@ func setup(vehicle_stats: VehicleStats, vehicle_driver: RefCounted, player: bool
 	health = CombatRules.Health.new(stats.max_health)
 	drive = ArcadeHandling.DriveState.new()
 	drive.turbo = stats.turbo_capacity
+	var tx := stats.wheel_track
+	var tz := stats.wheel_base
+	wheel_offsets = [Vector3(-tx, -0.1, -tz), Vector3(tx, -0.1, -tz), Vector3(-tx, -0.1, tz), Vector3(tx, -0.1, tz)]
 	var combo_data: Variant = GameData.load_json(GameData.COMBOS_PATH)
 	if typeof(combo_data) == TYPE_DICTIONARY:
 		status.configure(float(combo_data.get("energy_max", 100.0)), float(combo_data.get("energy_regen", 6.0)))
@@ -107,6 +112,8 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	if driver != null:
 		frame = driver.get_frame(self, dt)
 	var drive_frame := frame.idle() if status.is_frozen() else frame
+	if status.is_jammed() and drive_frame.turbo:
+		drive_frame = _without_turbo(drive_frame)
 
 	_impact_cooldown = maxf(0.0, _impact_cooldown - dt)
 	_detect_impacts(state, up)
@@ -128,7 +135,21 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	var along_normal := v.dot(n)
 	drive.vertical = v.y
 
+	var lateral_before := drive.lateral
 	ArcadeHandling.step(stats, drive, drive_frame, grounded, dt)
+	if grounded and surface == "ice":
+		# Sheet ice: the tyres barely bite, so the car keeps most of its slide.
+		drive.lateral = lerpf(lateral_before, drive.lateral, 0.12)
+	elif grounded and surface == "mud":
+		# Sucking mud: top speed drops to just over half and the car labours.
+		var mud_cap := stats.max_speed * (0.55 if not drive.boosting else 0.75)
+		if drive.speed > mud_cap:
+			drive.speed = move_toward(drive.speed, mud_cap, 30.0 * dt)
+	if status.is_snared():
+		# Spike Net: the tangled wheels can't turn fast, so speed bleeds down hard.
+		var cap := stats.max_speed * status.snare_speed_scale
+		if drive.speed > cap:
+			drive.speed = move_toward(drive.speed, cap, 40.0 * dt)
 
 	if grounded:
 		v = fwd * drive.speed + right * drive.lateral + n * along_normal
@@ -152,6 +173,22 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 
 	_last_out_velocity = state.linear_velocity
 	_has_last = true
+
+
+func _without_turbo(f: ArcadeHandling.ControlFrame) -> ArcadeHandling.ControlFrame:
+	var c := ArcadeHandling.ControlFrame.new()
+	c.throttle = f.throttle
+	c.brake = f.brake
+	c.steer = f.steer
+	c.steer_digital = f.steer_digital
+	c.fire_gun = f.fire_gun
+	c.fire_special = f.fire_special
+	c.look_back = f.look_back
+	c.combo_presses = f.combo_presses
+	c.combo_hold = f.combo_hold
+	c.tight_turn = f.tight_turn
+	c.cycle_special = f.cycle_special
+	return c
 
 
 func _suspension(state: PhysicsDirectBodyState3D, xf: Transform3D, up: Vector3) -> void:
@@ -246,6 +283,9 @@ func _play_impact(volume: float) -> void:
 func _physics_process(delta: float) -> void:
 	if not _alive or stats == null:
 		return
+	if _arena == null or not is_instance_valid(_arena):
+		_arena = get_tree().get_first_node_in_group("arena")
+	surface = (_arena as ArenaBase).surface_at(global_position) if _arena is ArenaBase else ""
 	var burn := status.tick(delta)
 	if burn > 0.0:
 		take_damage(burn, status.burn_source as Node)

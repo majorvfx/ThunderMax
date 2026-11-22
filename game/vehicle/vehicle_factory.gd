@@ -16,7 +16,7 @@ static func create(vehicle_id: String, driver: RefCounted, is_player: bool, with
 
 	var shape := CollisionShape3D.new()
 	var box := BoxShape3D.new()
-	box.size = Vector3(1.9, 0.75, 4.3)
+	box.size = Vector3(stats.body_width, stats.body_height, stats.body_length)
 	shape.shape = box
 	shape.position = Vector3(0, 0.12, 0)
 	v.add_child(shape)

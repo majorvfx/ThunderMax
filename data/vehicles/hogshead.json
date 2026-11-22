@@ -1,0 +1,80 @@
+{
+  "id": "hogshead",
+  "name": "Hogshead",
+  "class": "heavy",
+  "paint": "hogshead",
+  "description": "A fuel tanker with the tank poured full of concrete. Slow to start, impossible to stop.",
+  "health": {
+    "max_health": 150
+  },
+  "drive": {
+    "max_speed": 25.0,
+    "accel": 15.0,
+    "accel_falloff": 0.45,
+    "brake_decel": 38.0,
+    "reverse_max_speed": 9.0,
+    "reverse_accel": 11.0,
+    "coast_decel": 6.0
+  },
+  "steering": {
+    "turn_rate_deg": 135.0,
+    "high_speed_turn_scale": 0.78,
+    "pivot_turn": 0.25,
+    "full_turn_speed": 4.5,
+    "steer_ramp_time": 0.2,
+    "steer_return_time": 0.1,
+    "analog_steer_curve": 1.4,
+    "yaw_response": 11.0
+  },
+  "grip": {
+    "grip": 11.0,
+    "drift_grip": 2.6,
+    "drift_min_speed": 12.0,
+    "drift_turn_boost": 1.3,
+    "drift_brake_scale": 0.3,
+    "tight_turn_boost": 1.6,
+    "tight_turn_drag": 5.5
+  },
+  "body": {
+    "mass": 2400.0,
+    "body_width": 2.3,
+    "body_height": 1.0,
+    "body_length": 5.4,
+    "wheel_track": 1.0,
+    "wheel_base": 1.75,
+    "gravity_scale": 1.6,
+    "air_control": 0.25,
+    "air_upright": 3.0,
+    "upright_strength": 9.0,
+    "ride_height": 0.6,
+    "suspension_hz": 2.0,
+    "suspension_damping": 0.6
+  },
+  "combat": {
+    "ram_power": 1.6,
+    "ram_armor": 1.5
+  },
+  "turbo": {
+    "turbo_capacity": 100.0,
+    "turbo_drain": 35.0,
+    "turbo_regen": 4.0,
+    "turbo_speed_mult": 1.4,
+    "turbo_thrust": 18.0,
+    "turbo_kick": 4.0,
+    "turbo_kick_cost": 6.0,
+    "turbo_air_thrust": 16.0,
+    "turbo_air_lift": 7.0
+  },
+  "signature": {
+    "id": "dead_weight",
+    "name": "Dead Weight",
+    "kind": "shockwave",
+    "description": "Drops the concrete-filled tank on its jacks. Everything close by is thrown clear and shaken apart.",
+    "radius": 12.0,
+    "damage": 24.0,
+    "min_damage": 8.0,
+    "impulse": 16000.0,
+    "recharge_s": 16.0,
+    "cooldown": 0.8
+  }
+}

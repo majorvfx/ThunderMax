@@ -166,7 +166,13 @@ func _draw_status(pos: Vector2, fs: int) -> float:
 		draw_string(_font, Vector2(pos.x, y), "BURNING", HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1.0, 0.4, 0.1))
 		y += fs + 6
 	if st.is_cloaked():
-		draw_string(_font, Vector2(pos.x, y), "BLACKOUT  %.1f" % st.cloak_time, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.75, 0.72, 0.68))
+		draw_string(_font, Vector2(pos.x, y), "CLOAKED  %.1f" % st.cloak_time, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.75, 0.72, 0.68))
+		y += fs + 6
+	if st.is_snared():
+		draw_string(_font, Vector2(pos.x, y), "SNARED  %.1f" % st.snare_time, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.85, 0.8, 0.7))
+		y += fs + 6
+	if st.is_jammed():
+		draw_string(_font, Vector2(pos.x, y), "TURBO DEAD  %.1f" % st.jam_time, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.6, 0.8, 1.0))
 		y += fs + 6
 	if st.is_overdriven():
 		draw_string(_font, Vector2(pos.x, y), "RIVET STORM  %.1f" % st.overdrive_time, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1.0, 0.85, 0.3))
@@ -178,18 +184,32 @@ func _draw_specials(pos: Vector2, scale_ui: float, fs: int) -> void:
 	var sp := vehicle.specials
 	if sp == null:
 		return
-	var w := 300.0 * scale_ui
+	var w := 340.0 * scale_ui
 	var h := 52.0 * scale_ui
 	draw_rect(Rect2(pos, Vector2(w, h)), C_PANEL)
 	draw_rect(Rect2(pos, Vector2(w, h)), C_EDGE, false, 2.0)
-	if sp.selected == "" or sp.count(sp.selected) <= 0:
+	# The car's own special recharges along the bottom edge, whichever weapon is up.
+	if sp.signature_id != "":
+		var bar := Rect2(pos + Vector2(12, h / scale_ui - 9) * scale_ui, Vector2(w - 24 * scale_ui, 4 * scale_ui))
+		draw_rect(bar, Color(0, 0, 0, 0.55))
+		var ready := sp.signature_charge >= 1.0
+		draw_rect(Rect2(bar.position, Vector2(bar.size.x * sp.signature_charge, bar.size.y)), C_TURBO if ready else C_DIM)
+	if sp.selected == "" or (sp.count(sp.selected) <= 0 and not sp.is_signature(sp.selected)):
 		draw_string(_font, pos + Vector2(12, 32) * scale_ui, "NO SPECIAL  -  find a weapon crate", HORIZONTAL_ALIGNMENT_LEFT, -1, fs - 4, C_DIM)
 		return
-	draw_string(_font, pos + Vector2(12, 32) * scale_ui, sp.display_name(sp.selected).to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, fs + 4, C_TEXT)
-	draw_string(_font, pos + Vector2(150, 32) * scale_ui, "x%d" % sp.count(sp.selected), HORIZONTAL_ALIGNMENT_LEFT, -1, fs + 4, C_TURBO)
-	var others := sp.total() - sp.count(sp.selected)
+	var weapon_name := sp.display_name(sp.selected).to_upper()
+	draw_string(_font, pos + Vector2(12, 32) * scale_ui, weapon_name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs + 4, C_TEXT)
+	# Long names (SCOOP AND HURL) push the count along instead of running into it.
+	var amount_x := maxf(168.0 * scale_ui, 12.0 * scale_ui + _font.get_string_size(weapon_name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs + 4).x + 14.0 * scale_ui)
+	var amount := "x%d" % sp.count(sp.selected)
+	var amount_col := C_TURBO
+	if sp.is_signature(sp.selected):
+		amount = "READY" if sp.count(sp.selected) > 0 else "%d%%" % int(sp.signature_charge * 100.0)
+		amount_col = C_TURBO if sp.count(sp.selected) > 0 else C_DIM
+	draw_string(_font, Vector2(pos.x + amount_x, pos.y + 32 * scale_ui), amount, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, amount_col)
+	var others := sp.total() - (0 if sp.is_signature(sp.selected) else sp.count(sp.selected))
 	if others > 0:
-		draw_string(_font, pos + Vector2(200, 32) * scale_ui, "+%d more" % others, HORIZONTAL_ALIGNMENT_LEFT, -1, fs - 4, C_DIM)
+		draw_string(_font, pos + Vector2(w / scale_ui - 44, 32) * scale_ui, "+%d" % others, HORIZONTAL_ALIGNMENT_LEFT, -1, fs - 4, C_DIM)
 
 
 ## Arrows for the D-pad presses of a combo in progress, so players can see their input.

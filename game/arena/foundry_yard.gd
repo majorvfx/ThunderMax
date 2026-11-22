@@ -1,5 +1,5 @@
 class_name FoundryYard
-extends Node3D
+extends ArenaBase
 ## Milestone 1 test arena: "The Foundry Yard", a dead steelworks walled in with
 ## scrap. Built in code from placeholder blocks so layout changes are quick;
 ## it will be rebuilt as an authored scene with real art later.
@@ -11,24 +11,16 @@ extends Node3D
 const HALF := 80.0
 const WALL_HEIGHT := 7.0
 
-var spawn_points: Array[Transform3D] = []
-var player_spawn := Transform3D()
-var drone_routes: Array = []   ## Array of Array[Vector3]
-var barrel_spots: Array[Vector3] = []
-var environment: Environment
-var sun: DirectionalLight3D
-var lamps: Array[OmniLight3D] = []
-
 var _concrete: StandardMaterial3D
 var _wall: StandardMaterial3D
 var _steel: StandardMaterial3D
-var _container_mats: Array[StandardMaterial3D] = []
 var _flicker: OmniLight3D
 var _flicker_time := 0.0
-var _rng := RandomNumberGenerator.new()
 
 
 func _ready() -> void:
+	display_name = "THE FOUNDRY YARD"
+	tagline = "Wreck the drones. Mind the drums."
 	_rng.seed = 1977
 	_make_materials()
 	_build_environment()
@@ -126,53 +118,6 @@ func _build_environment() -> void:
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 90.0
 	add_child(sun)
-
-
-# --- Geometry helpers ------------------------------------------------------------
-
-func _block(size: Vector3, pos: Vector3, mat: Material, rot_deg: Vector3 = Vector3.ZERO) -> StaticBody3D:
-	var body := StaticBody3D.new()
-	body.collision_layer = ArcadeVehicle.LAYER_WORLD
-	body.collision_mask = 0
-	body.position = pos
-	body.rotation_degrees = rot_deg
-	var shape := CollisionShape3D.new()
-	var b := BoxShape3D.new()
-	b.size = size
-	shape.shape = b
-	body.add_child(shape)
-	VehicleVisualParts.box(body, size, Vector3.ZERO, mat)
-	add_child(body)
-	return body
-
-
-## A ramp whose top surface runs from `bottom` (on the ground) to `top`.
-func _ramp(bottom: Vector3, top: Vector3, width: float, mat: Material) -> StaticBody3D:
-	var thickness := 1.0
-	var dir := top - bottom
-	var zz := -dir.normalized()
-	var xx := Vector3.UP.cross(zz).normalized()
-	var yy := zz.cross(xx).normalized()
-	var basis := Basis(xx, yy, zz)
-	var center := (bottom + top) * 0.5 - yy * thickness * 0.5
-	var size := Vector3(width, thickness, dir.length())
-	var body := StaticBody3D.new()
-	body.collision_layer = ArcadeVehicle.LAYER_WORLD
-	body.collision_mask = 0
-	body.transform = Transform3D(basis, center)
-	var shape := CollisionShape3D.new()
-	var b := BoxShape3D.new()
-	b.size = size
-	shape.shape = b
-	body.add_child(shape)
-	VehicleVisualParts.box(body, size, Vector3.ZERO, mat)
-	add_child(body)
-	return body
-
-
-func _container(pos: Vector3, along_z: bool, length: float = 12.0, yaw_deg: float = 0.0) -> void:
-	var size := Vector3(2.6, 2.6, length) if along_z else Vector3(length, 2.6, 2.6)
-	_block(size, pos + Vector3(0, 1.3, 0), _container_mats[_rng.randi() % _container_mats.size()], Vector3(0, yaw_deg, 0))
 
 
 # --- Layout ----------------------------------------------------------------------
@@ -337,18 +282,3 @@ func pickup_spots() -> Array:
 		["weapon", Vector3(0, 1.0, 70)],
 		["weapon", Vector3(68, 3.4, 22)],     # top of the kicker
 	]
-
-
-## Nearest spawn point that has no vehicle close by.
-func safe_spawn(avoid: Array) -> Transform3D:
-	var best := spawn_points[0]
-	var best_score := -1.0
-	for sp in spawn_points:
-		var nearest := 999.0
-		for n in avoid:
-			if n is Node3D and n.is_inside_tree():
-				nearest = minf(nearest, (n as Node3D).global_position.distance_to(sp.origin))
-		if nearest > best_score:
-			best_score = nearest
-			best = sp
-	return best

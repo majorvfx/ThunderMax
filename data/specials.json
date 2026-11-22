@@ -2,6 +2,7 @@
   "_note": "Pickup special weapons. Weapon crates in the arena hand out 'crate_amount' of a random one.",
   "crate_amount": 2,
   "max_ammo": 6,
+  "_curve_note": "curve_deg_per_s bends a shot gently toward a target inside view_cone_deg of where it is heading: about a tenth of the Seeker's turn rate. Leave both out for a dead-straight weapon.",
   "weapons": {
     "seeker": {
       "name": "Seeker",
@@ -14,9 +15,11 @@
     },
     "firebrand": {
       "name": "Firebrand",
-      "description": "Fast straight rocket that leaves the target burning.",
+      "description": "Fast rocket that leaves the target burning. Bends slightly toward a target ahead.",
       "damage": 12.0,
       "speed": 70.0,
+      "curve_deg_per_s": 14.0,
+      "view_cone_deg": 25.0,
       "burn_s": 2.5,
       "burn_dps": 5.0,
       "life_s": 2.0,
@@ -24,12 +27,67 @@
     },
     "sledge": {
       "name": "Sledge",
-      "description": "Slow, heavy warhead. Huge damage and a hard shove.",
+      "description": "Slow, heavy warhead. Flies dead straight. Huge damage and a hard shove.",
       "damage": 38.0,
       "speed": 32.0,
       "impulse": 14000.0,
       "life_s": 4.0,
       "cooldown": 1.2
+    },
+    "satchel": {
+      "name": "Satchel",
+      "kind": "satchel",
+      "description": "Canvas bag of blasting charge. Tap to lay up to three behind you; press again a second later to set them all off. Left alone, they blow after 8 s.",
+      "damage": 26.0,
+      "splash_radius": 7.0,
+      "impulse": 10000.0,
+      "life_s": 8.0,
+      "detonate_after_s": 1.0,
+      "max_live": 3,
+      "cooldown": 0.3
+    },
+    "tar_pot": {
+      "name": "Tar Pot",
+      "description": "A lobbed canister of burning tar. Bursts into a wide pool of fire.",
+      "damage": 10.0,
+      "speed": 18.0,
+      "lift": 8.0,
+      "gravity": 22.0,
+      "splash_radius": 4.0,
+      "splash_damage": 6.0,
+      "impulse": 2000.0,
+      "pool_radius": 6.5,
+      "pool_s": 4.5,
+      "burn_s": 2.0,
+      "burn_dps": 8.0,
+      "life_s": 3.0,
+      "cooldown": 0.8
+    },
+    "skipper": {
+      "name": "Skipper",
+      "description": "A bomb that bounces off floors and walls up to three times, then blows. Hits a car and it blows at once.",
+      "damage": 15.0,
+      "speed": 34.0,
+      "lift": 4.0,
+      "gravity": 18.0,
+      "bounces": 3,
+      "splash_radius": 5.0,
+      "splash_damage": 8.0,
+      "impulse": 5000.0,
+      "life_s": 4.0,
+      "cooldown": 0.6
+    },
+    "arc_coil": {
+      "name": "Arc Coil",
+      "kind": "arc",
+      "description": "A bolt of current to the car ahead that jumps on to the car nearest it. Both lose their turbo for 2 s.",
+      "damage": 14.0,
+      "chain_damage": 8.0,
+      "range": 40.0,
+      "cone_deg": 35.0,
+      "chain_range": 15.0,
+      "jam_s": 2.0,
+      "cooldown": 0.7
     }
   }
 }

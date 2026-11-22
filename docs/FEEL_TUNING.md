@@ -1,6 +1,6 @@
 # Tuning the feel
 
-Thunder Max's handling is our own arcade model (`core/arcade_handling.gd`). It aims for a 1990s
+Iron Carnage's handling is our own arcade model (`core/arcade_handling.gd`). It aims for a 1990s
 arcade combat feel: instant throttle, tight turns that loosen a little at speed, cars that stay
 planted, hits that shove instead of flip, and jumps with a short hang.
 

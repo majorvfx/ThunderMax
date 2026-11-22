@@ -25,6 +25,13 @@ func _run() -> void:
 	await _sim(0.3)
 	_save("title")
 	t.queue_free()
+	var cs := CarSelect.new()
+	root.add_child(cs)
+	await _sim(0.2)
+	cs._show(cs.cars.find("hogshead"))
+	await _sim(1.2)
+	_save("car_select")
+	cs.queue_free()
 
 	var m := YardMatch.new()
 	root.add_child(m)
@@ -147,7 +154,74 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	_save("tuning_panel")
+	m.tuning.close_panel()
+	m.queue_free()
+	await _sim(0.2)
+	# Each car's own special, fired at a drone in the west lane.
+	for shot in [["rustjaw", "sig_slag_hook", 0.18, 20.0], ["cinder", "sig_ember_fan", 0.2, 22.0],
+			["hogshead", "sig_dead_weight", 0.2, 7.0], ["sawback", "sig_ripsaw", 0.42, 20.0],
+			["warrant", "sig_spike_net", 0.25, 20.0], ["bastion", "sig_mortar_spread", 0.5, 15.0],
+			["mourner", "sig_pall", 1.4, -9.0], ["bucketmouth", "sig_scoop_and_hurl", 0.35, 7.0],
+			["tonnage", "sig_rockslide", 0.6, -14.0], ["vandal", "sig_shrapnel_ring", 0.1, 8.0],
+			["lancet", "sig_ghost_run", 0.4, 20.0], ["sermon", "sig_hydraulic_hop", 0.3, 9.0]]:
+		await _signature_shot(shot[0], shot[1], shot[2], shot[3])
+	# The match setup screen, and a look at each arena with bots in roster cars.
+	var ms := MatchSetup.new()
+	root.add_child(ms)
+	await _sim(0.3)
+	_save("match_setup")
+	ms.queue_free()
+	await _sim(0.1)
+	for a in [["refinery_row", Vector3(0, 1.2, 62), 0.0], ["frozen_wharf", Vector3(-62, 1.2, -10), PI * 0.85], ["blackwater_bog", Vector3(-62, 1.2, 0), -PI * 0.5]]:
+		var am := YardMatch.new()
+		am.arena_id = a[0]
+		am.bot_count = 4
+		am.bot_cars = "roster"
+		am.player_car = "tonnage"
+		root.add_child(am)
+		await _sim(0.5)
+		am.player.global_transform = Transform3D(Basis(Vector3.UP, a[2]), a[1])
+		am.player.reset_physics_interpolation()
+		am.camera.snap()
+		await _sim(2.5)
+		_save("arena_" + a[0])
+		am.queue_free()
+		await _sim(0.2)
+	# Every new car on the select screen.
+	for id in ["warrant", "bastion", "mourner", "bucketmouth", "tonnage", "vandal", "lancet", "sermon"]:
+		var sel := CarSelect.new()
+		root.add_child(sel)
+		await _sim(0.2)
+		sel._show(sel.cars.find(id))
+		await _sim(1.0)
+		_save("select_" + id)
+		sel.queue_free()
+		await _sim(0.1)
 	quit()
+
+
+func _signature_shot(car: String, shot: String, after: float, gap: float) -> void:
+	var m := YardMatch.new()
+	m.player_car = car
+	root.add_child(m)
+	await _sim(1.0)
+	var drv := ScriptedDriver.new()
+	m.player.driver = drv
+	var drone: ArcadeVehicle = m.drones[0]
+	drone.driver = ScriptedDriver.new()
+	drone.global_transform = Transform3D(Basis(Vector3.UP, 1.2), Vector3(-55 + (2.0 if gap < 10.0 else 1.5), 1.2, 20 - gap))
+	drone.linear_velocity = Vector3.ZERO
+	drone.reset_physics_interpolation()
+	m.player.global_transform = Transform3D(Basis.IDENTITY, Vector3(-55, 1.2, 20))
+	m.player.linear_velocity = Vector3.ZERO
+	m.player.reset_physics_interpolation()
+	m.camera.snap()
+	await _sim(0.8)
+	m.player.specials.fire()
+	await _sim(after)
+	_save(shot)
+	m.queue_free()
+	await _sim(0.2)
 
 
 func _save(shot: String) -> void:

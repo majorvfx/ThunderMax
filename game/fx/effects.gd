@@ -176,3 +176,120 @@ static func smog_burst(parent: Node, pos: Vector3) -> void:
 	p.scale_amount_min = 0.6
 	p.scale_amount_max = 1.4
 	p.color_ramp = _ramp([Color(0.16, 0.15, 0.14, 0.6), Color(0.2, 0.19, 0.18, 0.35), Color(0.25, 0.24, 0.22, 0.0)])
+
+
+## Dead Weight: a ring of dust and grit that races out across the ground.
+static func shockwave(parent: Node, pos: Vector3, radius: float) -> void:
+	if parent == null or not parent.is_inside_tree():
+		return
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mat.albedo_color = Color(0.55, 0.45, 0.35, 0.7)
+	var ring := MeshInstance3D.new()
+	var torus := TorusMesh.new()
+	torus.inner_radius = 0.85
+	torus.outer_radius = 1.0
+	torus.rings = 24
+	torus.ring_segments = 6
+	torus.material = mat
+	ring.mesh = torus
+	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	ring.position = pos + Vector3.UP * 0.3
+	ring.scale = Vector3(0.5, 0.6, 0.5)
+	parent.add_child(ring)
+	var tw := ring.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(ring, "scale", Vector3(radius, 1.4, radius), 0.45).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	tw.tween_property(mat, "albedo_color:a", 0.0, 0.5)
+	tw.chain().tween_callback(ring.queue_free)
+
+	var dust := _burst(parent, pos + Vector3.UP * 0.3, 30, 1.2, _particle_material("smoke", Color(0.12, 0.11, 0.1), 0.0), 1.6)
+	dust.emission_shape = CPUParticles3D.EMISSION_SHAPE_RING
+	dust.emission_ring_axis = Vector3.UP
+	dust.emission_ring_radius = 1.5
+	dust.emission_ring_inner_radius = 1.0
+	dust.emission_ring_height = 0.2
+	dust.direction = Vector3(1, 0.2, 0)
+	dust.spread = 180.0
+	dust.flatness = 0.85
+	dust.initial_velocity_min = radius * 0.8
+	dust.initial_velocity_max = radius * 1.3
+	dust.damping_min = radius * 0.8
+	dust.damping_max = radius * 1.2
+	dust.scale_amount_min = 0.8
+	dust.scale_amount_max = 1.8
+	dust.color_ramp = _ramp([Color(0.45, 0.38, 0.3, 0.8), Color(0.3, 0.26, 0.22, 0.5), Color(0.2, 0.18, 0.16, 0.0)])
+	sparks(parent, pos, Vector3.UP)
+
+
+## Arc Coil: a jagged white-blue bolt between two points that flickers out fast.
+static func arc(parent: Node, from: Vector3, to: Vector3) -> void:
+	if parent == null or not parent.is_inside_tree():
+		return
+	if not _mats.has("arc"):
+		var m := StandardMaterial3D.new()
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.albedo_color = Color(0.8, 0.9, 1.0)
+		m.emission_enabled = true
+		m.emission = Color(0.6, 0.8, 1.0)
+		m.emission_energy_multiplier = 6.0
+		_mats["arc"] = m
+	var holder := Node3D.new()
+	parent.add_child(holder)
+	var segments := 8
+	var prev := from
+	for i in range(1, segments + 1):
+		var t := float(i) / float(segments)
+		var p := from.lerp(to, t)
+		if i < segments:
+			p += Vector3(randf_range(-0.6, 0.6), randf_range(-0.4, 0.6), randf_range(-0.6, 0.6))
+		var length := prev.distance_to(p)
+		if length > 0.05:
+			var mi := MeshInstance3D.new()
+			var box := BoxMesh.new()
+			box.size = Vector3(0.07, 0.07, length)
+			box.material = _mats["arc"]
+			mi.mesh = box
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			holder.add_child(mi)
+			var dir := (p - prev).normalized()
+			var up := Vector3.UP if absf(dir.y) < 0.99 else Vector3.FORWARD
+			mi.global_transform = Transform3D(Basis.looking_at(dir, up), (prev + p) * 0.5)
+		prev = p
+	var light := OmniLight3D.new()
+	light.light_color = Color(0.6, 0.8, 1.0)
+	light.light_energy = 3.0
+	light.omni_range = 8.0
+	holder.add_child(light)
+	light.global_position = to
+	sparks(parent, to, Vector3.UP)
+	parent.get_tree().create_timer(0.18, false).timeout.connect(holder.queue_free)
+
+
+## Pall: a thick black cloud that hangs where the casket burst. The caller owns
+## it: stop it emitting when the cloud should thin out, then free it.
+static func pall_cloud(parent: Node, pos: Vector3, radius: float) -> CPUParticles3D:
+	var p := CPUParticles3D.new()
+	p.amount = 60
+	p.lifetime = 2.2
+	p.local_coords = false
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	p.emission_sphere_radius = radius * 0.75
+	p.direction = Vector3.UP
+	p.spread = 60.0
+	p.initial_velocity_min = 0.3
+	p.initial_velocity_max = 1.2
+	p.gravity = Vector3(0, 0.25, 0)
+	p.scale_amount_min = 1.2
+	p.scale_amount_max = 2.4
+	var q := QuadMesh.new()
+	q.size = Vector2(2.2, 2.2)
+	q.material = VehicleVisualParts.soft_puff(false)
+	p.mesh = q
+	p.color_ramp = _ramp([Color(0.05, 0.045, 0.04, 0.0), Color(0.04, 0.035, 0.03, 0.85), Color(0.06, 0.055, 0.05, 0.0)])
+	parent.add_child(p)
+	p.global_position = pos + Vector3.UP * 1.0
+	p.emitting = true
+	return p

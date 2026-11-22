@@ -1,6 +1,6 @@
 class_name ArcadeHandling
 extends RefCounted
-## Engine-agnostic arcade drive model for Thunder Max.
+## Engine-agnostic arcade drive model for Iron Carnage.
 ##
 ## Works in "car space": forward speed (m/s), sideways slide speed (m/s) and a
 ## target yaw rate (rad/s). The engine layer reads those from the physics body,

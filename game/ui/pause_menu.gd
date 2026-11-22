@@ -4,6 +4,7 @@ extends Control
 
 signal resumed
 signal restart_requested
+signal change_car_requested
 signal quit_requested
 signal settings_changed
 
@@ -50,7 +51,8 @@ func _ready() -> void:
 	col.add_child(_fps_btn)
 	_quality_btn = UiStyle.button("", _toggle_quality)
 	col.add_child(_quality_btn)
-	col.add_child(UiStyle.button("Restart the Yard", func(): restart_requested.emit()))
+	col.add_child(UiStyle.button("Restart the match", func(): restart_requested.emit()))
+	col.add_child(UiStyle.button("Change car or arena", func(): change_car_requested.emit()))
 	col.add_child(UiStyle.button("Quit to title", func(): quit_requested.emit()))
 
 	_help = GridContainer.new()

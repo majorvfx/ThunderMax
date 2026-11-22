@@ -1,5 +1,5 @@
 extends SceneTree
-## Headless test runner for Thunder Max.
+## Headless test runner for Iron Carnage.
 ##
 ##   godot --headless --path . --import
 ##   godot --headless --path . --fixed-fps 60 --script res://tests/run_tests.gd
@@ -42,8 +42,19 @@ func _run() -> void:
 	await _handling_measurements()
 	print("== Combo moves and specials ==")
 	await _combo_moves()
+	await _weapon_curve()
+	print("== Cars and their own specials ==")
+	await _roster_driving()
+	await _signature_specials()
+	await _new_car_specials()
+	await _new_pickup_weapons()
+	await _car_select()
 	print("== Arena smoke test ==")
 	await _arena_smoke()
+	print("== Arenas, surfaces and bots ==")
+	await _all_arenas()
+	await _surfaces()
+	await _bot_settings()
 	_write_report()
 	print("")
 	print("%d passed, %d failed" % [_pass, _fail])
@@ -80,8 +91,28 @@ func _test_data() -> void:
 	var copy := s.duplicate_stats()
 	copy.max_speed = 1.0
 	check(s.max_speed == 30.0, "duplicate_stats is a deep copy")
+	var g := s.duplicate_stats()
+	g.apply_grip_preset()
+	check(g.coast_decel > s.coast_decel * 2.0 and g.drift_grip > s.drift_grip and g.steer_return_time < s.steer_return_time, "the Grip preset stops quicker, slides less and straightens faster")
 	var t := s.to_tuning_dict()
 	check(t.size() == VehicleStats.TUNABLE.size(), "tuning dict has every tunable")
+	# The roster: every car loads, keeps its own name, and has its own special.
+	var roster := GameData.roster()
+	check(roster.size() == 12 and roster[0] == "rustjaw", "the roster has twelve cars, Rustjaw first")
+	var paints := {}
+	for id in roster:
+		var car := GameData.load_vehicle(id, false)
+		check(car != null and car.id == id, "%s.json loads" % id)
+		check(car.display_name.to_lower() == id, "%s keeps its own name (the special's name doesn't leak in)" % id)
+		var sig := GameData.signature(id)
+		check(sig.has("id") and sig.has("kind") and float(sig.get("recharge_s", 0.0)) > 0.0, "%s has its own recharging special" % id)
+		paints[car.paint] = true
+	check(paints.size() == roster.size(), "every car has its own look")
+	var cinder := GameData.load_vehicle("cinder", false)
+	var hog := GameData.load_vehicle("hogshead", false)
+	check(cinder.max_speed > s.max_speed and cinder.max_health < s.max_health, "Cinder is faster and more fragile than Rustjaw")
+	check(hog.max_health > s.max_health and hog.mass > s.mass and hog.max_speed < s.max_speed, "Hogshead is heavier, tougher and slower")
+	check(GameData.signature("scrap_drone").is_empty(), "drones have no special of their own")
 
 
 func _test_handling_math() -> void:
@@ -253,7 +284,7 @@ func _test_input() -> void:
 	var LT := "axis:%d:+" % JOY_AXIS_TRIGGER_LEFT
 	var RT := "axis:%d:+" % JOY_AXIS_TRIGGER_RIGHT
 	var expected := {
-		"standard": {"accelerate": X, "brake": Y, "turbo": B, "tight_turn": A,
+		"standard": {"accelerate": X, "brake": B, "turbo": Y, "tight_turn": A,
 			"special_next": RB, "special_prev": LB, "fire_special": LT, "fire_gun": RT},
 		"alt1": {"accelerate": A, "brake": LT, "turbo": Y, "tight_turn": RT,
 			"special_next": RB, "special_prev": LB, "fire_special": B, "fire_gun": X},
@@ -923,8 +954,10 @@ func _combo_moves() -> void:
 	await _frames(45)
 
 	# Tailgunner with no special: a freeze blast out the back, paid for with energy.
+	# (The car's own special counts as a selected weapon, so it starts recharging here.)
 	v.status.reset()
 	v.specials.clear()
+	v.specials.signature_charge = 0.0
 	target.global_transform = Transform3D(Basis.IDENTITY, Vector3(0, 1.0, 18))
 	target.linear_velocity = Vector3.ZERO
 	target.reset_physics_interpolation()
@@ -1068,6 +1101,239 @@ func _combo_moves() -> void:
 	await _frames(5)
 
 
+# --- Weapon curve ------------------------------------------------------------------
+
+## Fires one shot from a parked car facing -Z at a parked target and reports whether
+## it hit, plus how far the shot turned in its first 0.3 s.
+func _shoot_at(kind: String, off_deg: float, dist: float) -> Dictionary:
+	var world := _make_pad()
+	var pair := await _spawn_settled(world, Vector3(0, 1.0, 0))
+	var v: ArcadeVehicle = pair[0]
+	var a := deg_to_rad(off_deg)
+	var target_pair := _spawn(world, "rustjaw", Vector3(sin(a) * dist, 1.0, -cos(a) * dist))
+	var target: ArcadeVehicle = target_pair[0]
+	await _frames(45)
+	var hp := target.health.current
+	if kind == "cold_snap":
+		v.combos.request_move("cold_snap")
+	else:
+		v.specials.clear()
+		v.specials.add(kind, 1)
+		v.specials.fire()
+	var shot: Projectile = null
+	for c in world.get_children():
+		if c is Projectile:
+			shot = c
+	var dir0 := shot.velocity.normalized() if shot != null else Vector3.ZERO
+	await _frames(18)
+	var turned := rad_to_deg(dir0.angle_to(shot.velocity.normalized())) if shot != null and is_instance_valid(shot) else -1.0
+	var t := 0.0
+	while target.health.current >= hp and t < 2.5:
+		await physics_frame
+		t += 1.0 / 60.0
+	var out := {"hit": target.health.current < hp, "turned": turned, "frozen": target.status.is_frozen()}
+	world.queue_free()
+	await _frames(2)
+	return out
+
+
+func _weapon_curve() -> void:
+	# 14 deg/s (a tenth of the Seeker's turn) catches a car about 4 degrees off line at 40 m.
+	var r := await _shoot_at("firebrand", 4.0, 40.0)
+	check(r["hit"], "a Firebrand curves onto a target 4 degrees off line at 40 m")
+	check(r["turned"] > 0.5 and r["turned"] <= 14.0 * 0.3 + 0.5, "the Firebrand's curve is slight (%.1f deg in 0.3 s)" % r["turned"])
+	_measure["firebrand_turn_in_0_3s_deg"] = r["turned"]
+	r = await _shoot_at("firebrand", 35.0, 30.0)
+	check(not r["hit"], "a Firebrand ignores a target outside its view")
+	r = await _shoot_at("sledge", 4.0, 40.0)
+	check(not r["hit"], "the Sledge flies dead straight past a target 4 degrees off line")
+	check(r["turned"] >= 0.0 and r["turned"] < 0.1, "the Sledge doesn't turn (%.2f deg)" % r["turned"])
+	r = await _shoot_at("cold_snap", 4.0, 40.0)
+	check(r["hit"] and r["frozen"], "Cold Snap curves onto a target 4 degrees off line and freezes it")
+
+
+# --- Cars and their own specials -------------------------------------------------------
+
+func _roster_driving() -> void:
+	var dt := 1.0 / 60.0
+	for id in GameData.roster():
+		var world := _make_pad()
+		var drv := ScriptedDriver.new()
+		var v := VehicleFactory.create(id, drv, false, false)
+		world.add_child(v)
+		v.global_transform = Transform3D(Basis.IDENTITY, Vector3(0, 1.2, 300))
+		v.reset_physics_interpolation()
+		await _frames(45)
+		check(v.grounded, "%s settles on its wheels" % id)
+		drv.frame.throttle = 1.0
+		var t := 0.0
+		while t < 9.0:
+			await physics_frame
+			t += dt
+		_measure["%s_top_speed_ms" % id] = v.drive.speed
+		near(v.drive.speed, v.stats.max_speed, v.stats.max_speed * 0.04, "%s reaches its top speed" % id)
+		drv.frame.steer = 1.0
+		await _frames(120)
+		check(v.global_transform.basis.y.y > 0.8, "%s stays upright turning at full lock" % id)
+		world.queue_free()
+		await _frames(2)
+
+
+## A parked car of `id` facing -Z at the origin with a parked Scrap Drone at `target_at`.
+func _sig_range(id: String, target_at: Vector3) -> Array:
+	var world := _make_pad()
+	var drv := ScriptedDriver.new()
+	var v := VehicleFactory.create(id, drv, false, false)
+	world.add_child(v)
+	v.global_transform = Transform3D(Basis.IDENTITY, Vector3(0, 1.2, 0))
+	v.reset_physics_interpolation()
+	var target: ArcadeVehicle = null
+	if target_at != Vector3.ZERO:
+		target = VehicleFactory.create("scrap_drone", ScriptedDriver.new(), false, false)
+		world.add_child(target)
+		target.global_transform = Transform3D(Basis.IDENTITY, target_at)
+		target.reset_physics_interpolation()
+	await _frames(45)
+	return [world, v, target]
+
+
+func _projectiles(world: Node) -> Array:
+	return world.get_children().filter(func(c): return c is Projectile)
+
+
+func _signature_specials() -> void:
+	# Selection and recharge, on the Rustjaw.
+	var r := await _sig_range("rustjaw", Vector3(0, 1.2, -25))
+	var world: Node3D = r[0]
+	var v: ArcadeVehicle = r[1]
+	var target: ArcadeVehicle = r[2]
+	var sp := v.specials
+	check(sp.selected == "slag_hook" and sp.count("slag_hook") == 1, "a car starts with its own special selected and ready")
+	check(sp.total() == 0, "its own special doesn't count as pickup ammo")
+	# Slag Hook: hits the drone and drags it toward the car.
+	var hp := target.health.current
+	var gap := _flat(target.global_position - v.global_position).length()
+	check(sp.fire(), "Slag Hook fires")
+	check(sp.count("slag_hook") == 0 and sp.selected == "slag_hook", "it then recharges, still selected")
+	check(not sp.fire(), "it can't fire again while recharging")
+	await _frames(60)
+	check(target.health.current < hp, "Slag Hook damages the car it hooks")
+	var gap_after := _flat(target.global_position - v.global_position).length()
+	_measure["slag_hook_pull_m"] = gap - gap_after
+	check(gap - gap_after > 2.0, "Slag Hook drags the car toward you (%.1f m)" % (gap - gap_after))
+	var recharge := float(sp.signature.get("recharge_s", 14.0))
+	near(sp.signature_charge, 1.0 / recharge, 0.02, "it recharges over %.0f s" % recharge)
+	sp.signature_charge = 0.995
+	await _frames(10)
+	check(sp.count("slag_hook") == 1, "and is ready again once charged")
+	# Pickups take over the selection, and it comes back when they run out.
+	sp.add("firebrand", 1)
+	check(sp.selected == "firebrand", "a weapon crate's special is selected when you get it")
+	sp.cycle(1)
+	check(sp.selected == "slag_hook", "cycling reaches your own special")
+	sp.cycle(1)
+	sp.fire()
+	check(sp.selected == "slag_hook", "when the pickups run out, your own special is selected again")
+	world.queue_free()
+	await _frames(2)
+
+	# Ember Fan: five rockets in a fan.
+	r = await _sig_range("cinder", Vector3(0, 1.2, -20))
+	world = r[0]
+	v = r[1]
+	target = r[2]
+	hp = target.health.current
+	v.specials.fire()
+	await _frames(1)
+	check(_projectiles(world).size() == 5, "Ember Fan fires five rockets")
+	await _frames(60)
+	check(target.health.current < hp, "Ember Fan hits the car ahead")
+	world.queue_free()
+	await _frames(2)
+
+	# Dead Weight: hurts and throws a close car, leaves a far one alone.
+	r = await _sig_range("hogshead", Vector3(5.5, 1.2, -2))
+	world = r[0]
+	v = r[1]
+	target = r[2]
+	var far := VehicleFactory.create("scrap_drone", ScriptedDriver.new(), false, false)
+	world.add_child(far)
+	far.global_transform = Transform3D(Basis.IDENTITY, Vector3(-30, 1.2, 0))
+	await _frames(30)
+	hp = target.health.current
+	var far_hp := far.health.current
+	gap = _flat(target.global_position - v.global_position).length()
+	v.specials.fire()
+	await _frames(40)
+	check(target.health.current < hp, "Dead Weight damages a car close by")
+	gap_after = _flat(target.global_position - v.global_position).length()
+	_measure["dead_weight_throw_m"] = gap_after - gap
+	check(gap_after - gap > 2.0, "Dead Weight throws it clear (%.1f m)" % (gap_after - gap))
+	check(far.health.current == far_hp, "Dead Weight doesn't reach a car 30 m away")
+	world.queue_free()
+	await _frames(2)
+
+	# Ripsaw: hits a car ahead; off a wall, it bounces instead of breaking.
+	r = await _sig_range("sawback", Vector3(0, 1.2, -22))
+	world = r[0]
+	v = r[1]
+	target = r[2]
+	hp = target.health.current
+	v.specials.fire()
+	await _frames(60)
+	check(target.health.current < hp, "Ripsaw cuts the car ahead")
+	world.queue_free()
+	await _frames(2)
+	r = await _sig_range("sawback", Vector3.ZERO)
+	world = r[0]
+	v = r[1]
+	var wall := StaticBody3D.new()
+	wall.collision_layer = ArcadeVehicle.LAYER_WORLD
+	var ws := CollisionShape3D.new()
+	var wb := BoxShape3D.new()
+	wb.size = Vector3(30, 4, 1)
+	ws.shape = wb
+	wall.add_child(ws)
+	world.add_child(wall)
+	wall.global_transform = Transform3D(Basis(Vector3.UP, deg_to_rad(35.0)), Vector3(0, 2, -14))
+	v.specials.fire()
+	await _frames(1)
+	var saw: Projectile = _projectiles(world)[0]
+	var dir0 := Vector3(saw.velocity.x, 0, saw.velocity.z).normalized()
+	await _frames(40)
+	check(is_instance_valid(saw) and saw.bounces_left == 2, "Ripsaw bounces off a wall")
+	if is_instance_valid(saw):
+		check(dir0.angle_to(Vector3(saw.velocity.x, 0, saw.velocity.z).normalized()) > deg_to_rad(30.0), "and heads off in a new direction")
+		check(saw.global_position.y > 0.2 and saw.global_position.y < 1.0, "it runs along the ground (%.2f m up)" % saw.global_position.y)
+	world.queue_free()
+	await _frames(2)
+
+
+func _car_select() -> void:
+	var c := CarSelect.new()
+	root.add_child(c)
+	await process_frame
+	check(c.cars == GameData.roster(), "the car select lists the roster")
+	var start := c.index
+	c._show(c.index + 1)
+	check(c.index == (start + 1) % c.cars.size(), "right moves to the next car")
+	c._show(c.index - 2)
+	check(c.index == (start - 1 + c.cars.size()) % c.cars.size(), "left wraps round")
+	var hog := GameData.load_vehicle("hogshead", false)
+	var cinder := GameData.load_vehicle("cinder", false)
+	check(c.bar_fraction(hog, "armor") > c.bar_fraction(cinder, "armor"), "the armor bar shows Hogshead tougher than Cinder")
+	check(c.bar_fraction(cinder, "speed") > c.bar_fraction(hog, "speed"), "the speed bar shows Cinder faster")
+	c.queue_free()
+	await process_frame
+	var m := YardMatch.new()
+	m.player_car = "sawback"
+	root.add_child(m)
+	await _frames(5)
+	check(m.player.stats.id == "sawback" and m.player.specials.selected == "ripsaw", "the Yard starts with the chosen car and its special")
+	m.queue_free()
+	await _frames(5)
+
+
 # --- Arena smoke test ---------------------------------------------------------------
 
 func _arena_smoke() -> void:
@@ -1164,3 +1430,378 @@ func _write_report() -> void:
 	var f := FileAccess.open("res://docs/handling_report.md", FileAccess.WRITE)
 	if f != null:
 		f.store_string("\n".join(lines))
+
+
+# --- Iron Carnage update 1: the eight new cars and four new pickups ---------------------
+
+func _new_car_specials() -> void:
+	# Spike Net: hurts and snares the car ahead, which then can't reach full speed.
+	var r := await _sig_range("warrant", Vector3(0, 1.2, -22))
+	var world: Node3D = r[0]
+	var v: ArcadeVehicle = r[1]
+	var target: ArcadeVehicle = r[2]
+	var hp := target.health.current
+	check(v.specials.fire(), "Spike Net fires")
+	await _frames(50)
+	check(target.health.current < hp, "Spike Net hurts the car it catches")
+	check(target.status.is_snared(), "Spike Net snares its wheels")
+	world.queue_free()
+	await _frames(2)
+
+	# A snared car is held well under its top speed.
+	var pad := _make_pad()
+	var drv := ScriptedDriver.new()
+	var car := VehicleFactory.create("rustjaw", drv, false, false)
+	pad.add_child(car)
+	car.global_transform = Transform3D(Basis.IDENTITY, Vector3(0, 1.2, 300))
+	car.reset_physics_interpolation()
+	await _frames(40)
+	drv.frame.throttle = 1.0
+	await _frames(240)
+	car.status.snare(2.0, 0.3)
+	await _frames(60)
+	_measure["snared_speed_ms"] = car.drive.speed
+	check(car.drive.speed < car.stats.max_speed * 0.45, "a snared car slows right down (%.1f m/s)" % car.drive.speed)
+	pad.queue_free()
+	await _frames(2)
+
+	# Mortar Spread: five lobbed charges that come down on the car ahead.
+	r = await _sig_range("bastion", Vector3(0, 1.2, -16))
+	world = r[0]
+	v = r[1]
+	target = r[2]
+	hp = target.health.current
+	v.specials.fire()
+	await _frames(1)
+	check(_projectiles(world).size() == 5, "Mortar Spread lobs five charges")
+	var shell: Projectile = _projectiles(world)[0]
+	await _frames(15)
+	check(is_instance_valid(shell) and shell.global_position.y > 2.0, "they arc up over the bonnet")
+	await _frames(90)
+	check(target.health.current < hp, "Mortar Spread hurts the car ahead")
+	world.queue_free()
+	await _frames(2)
+
+	# Pall: a casket out the back that bursts into a burning cloud.
+	r = await _sig_range("mourner", Vector3(0, 1.2, 9))
+	world = r[0]
+	v = r[1]
+	target = r[2]
+	v.specials.fire()
+	await _frames(70)
+	var clouds := world.get_tree().get_nodes_in_group("pall_clouds")
+	check(clouds.size() == 1, "Pall leaves a cloud behind the hearse")
+	await _frames(20)
+	check(target.status.is_burning(), "the car behind, inside the cloud, burns")
+	check(not v.status.is_burning(), "the Mourner itself doesn't")
+	# A homing shot tracking a car in the cloud loses its lock.
+	var seeker := Projectile.new()
+	seeker.setup("seeker", null, {"turn_rate_deg": 140.0, "life_s": 3.0, "speed": 1.0})
+	world.add_child(seeker)
+	seeker.homing_target = target
+	seeker.launch(target.global_position + Vector3(0, 6, 30), Vector3(0, 0, -1))
+	await _frames(15)
+	check(seeker.homing_target == null, "a rocket loses its lock on a car inside the cloud")
+	world.queue_free()
+	await _frames(2)
+
+	# Scoop and Hurl: grabs the car right in front and throws it back over the cab.
+	r = await _sig_range("bucketmouth", Vector3(0, 1.2, -6.5))
+	world = r[0]
+	v = r[1]
+	target = r[2]
+	hp = target.health.current
+	v.specials.fire()
+	await _frames(30)
+	check(target.health.current < hp, "Scoop and Hurl hurts the car it scoops")
+	check(target.global_position.z > -4.0, "and flings it back toward the cab (z %.1f)" % target.global_position.z)
+	world.queue_free()
+	await _frames(2)
+
+	# Rockslide: boulders that roll out behind and hit the car following.
+	r = await _sig_range("tonnage", Vector3(0, 1.2, 14))
+	world = r[0]
+	v = r[1]
+	target = r[2]
+	hp = target.health.current
+	v.specials.fire()
+	await _frames(1)
+	check(_projectiles(world).size() == 4, "Rockslide dumps four boulders")
+	var rock: Projectile = _projectiles(world)[0]
+	await _frames(20)
+	check(is_instance_valid(rock) and rock.global_position.z > 4.0 and rock.global_position.y < 1.6, "they roll out along the ground behind the truck")
+	await _frames(80)
+	check(target.health.current < hp, "Rockslide hits the car behind")
+	world.queue_free()
+	await _frames(2)
+
+	# Shrapnel Ring: hits cars on every side at once.
+	r = await _sig_range("vandal", Vector3(0, 1.2, 8))
+	world = r[0]
+	v = r[1]
+	target = r[2]
+	var side := VehicleFactory.create("scrap_drone", ScriptedDriver.new(), false, false)
+	world.add_child(side)
+	side.global_transform = Transform3D(Basis.IDENTITY, Vector3(-8, 1.2, 0))
+	await _frames(30)
+	hp = target.health.current
+	var side_hp := side.health.current
+	v.specials.fire()
+	await _frames(1)
+	check(_projectiles(world).size() == 16, "Shrapnel Ring throws sixteen shards")
+	await _frames(30)
+	check(target.health.current < hp and side.health.current < side_hp, "it hits the car behind and the car beside")
+	world.queue_free()
+	await _frames(2)
+
+	# Ghost Run: cloaked, untargetable, turbo topped up.
+	r = await _sig_range("lancet", Vector3(0, 1.2, -20))
+	world = r[0]
+	v = r[1]
+	target = r[2]
+	v.drive.turbo = 20.0
+	v.specials.fire()
+	check(v.status.is_cloaked(), "Ghost Run cloaks the Lancet")
+	check(v.drive.turbo > 50.0, "and tops up its turbo")
+	check(Targeting.in_cone(target, Vector3(0, 0, 1), 60.0, 80.0) == null, "nothing can lock on to it")
+	world.queue_free()
+	await _frames(2)
+
+	# Hydraulic Hop: up in the air, then a slam that hurts a car beside the landing.
+	r = await _sig_range("sermon", Vector3(4.5, 1.2, -6))
+	world = r[0]
+	v = r[1]
+	target = r[2]
+	hp = target.health.current
+	v.specials.fire()
+	await _frames(12)
+	check(not v.grounded and v.global_position.y > 1.8, "Hydraulic Hop launches the car")
+	check(target.health.current == hp, "nothing is hurt while it's in the air")
+	await _frames(120)
+	check(target.health.current < hp, "the landing slam hurts the car beside it")
+	world.queue_free()
+	await _frames(2)
+
+
+func _new_pickup_weapons() -> void:
+	var data: Dictionary = GameData.load_json(GameData.SPECIALS_PATH)
+	for id in ["satchel", "tar_pot", "skipper", "arc_coil"]:
+		check((data["weapons"] as Dictionary).has(id), "specials.json has %s" % id)
+
+	# Satchel: lay three, then set them all off with one press.
+	var r := await _sig_range("rustjaw", Vector3(0, 1.2, 9))
+	var world: Node3D = r[0]
+	var v: ArcadeVehicle = r[1]
+	var target: ArcadeVehicle = r[2]
+	var sp := v.specials
+	sp.add("satchel", 3)
+	var hp := target.health.current
+	for i in 3:
+		check(sp.fire(), "lay satchel %d" % (i + 1))
+		await _frames(25)
+	check(sp.live_satchels().size() == 3, "three satchels sit on the ground")
+	check(target.health.current == hp, "they don't go off on their own straight away")
+	check(sp.selected == "satchel" and sp.has_shot(), "Satchel stays selected while charges are down")
+	await _frames(40)
+	check(sp.fire(), "a later press sets them off")
+	await _frames(5)
+	check(sp.live_satchels().is_empty(), "every satchel blew")
+	check(target.health.current < hp, "and hurt the car parked behind")
+	check(sp.selected != "satchel", "then Satchel is put away")
+	world.queue_free()
+	await _frames(2)
+
+	# Tar Pot: a lobbed canister that leaves a fire pool.
+	r = await _sig_range("rustjaw", Vector3(0, 1.2, -14))
+	world = r[0]
+	v = r[1]
+	target = r[2]
+	v.specials.add("tar_pot", 1)
+	v.specials.fire()
+	await _frames(90)
+	var pools := world.get_children().filter(func(c): return c is FirePool)
+	check(pools.size() == 1, "Tar Pot leaves a pool of burning tar")
+	check(target.status.is_burning(), "the car it lands near burns")
+	world.queue_free()
+	await _frames(2)
+
+	# Skipper: bounces off a wall instead of blowing up on it.
+	r = await _sig_range("rustjaw", Vector3.ZERO)
+	world = r[0]
+	v = r[1]
+	var wall := StaticBody3D.new()
+	wall.collision_layer = ArcadeVehicle.LAYER_WORLD
+	var ws := CollisionShape3D.new()
+	var wb := BoxShape3D.new()
+	wb.size = Vector3(30, 6, 1)
+	ws.shape = wb
+	wall.add_child(ws)
+	world.add_child(wall)
+	wall.global_transform = Transform3D(Basis.IDENTITY, Vector3(0, 3, -12))
+	v.specials.add("skipper", 1)
+	v.specials.fire()
+	await _frames(1)
+	var bomb: Projectile = _projectiles(world)[0]
+	await _frames(30)
+	check(is_instance_valid(bomb) and bomb.bounces_left < 3, "Skipper bounces")
+	if is_instance_valid(bomb):
+		check(bomb.velocity.z > 0.0, "and comes back off the wall")
+	await _frames(240)
+	check(not is_instance_valid(bomb), "it blows once it runs out of bounces or time")
+	world.queue_free()
+	await _frames(2)
+
+	# Arc Coil: hits the car ahead, jumps to the one next to it, kills both turbos.
+	r = await _sig_range("rustjaw", Vector3(0, 1.2, -20))
+	world = r[0]
+	v = r[1]
+	target = r[2]
+	var next_to := VehicleFactory.create("scrap_drone", ScriptedDriver.new(), false, false)
+	world.add_child(next_to)
+	next_to.global_transform = Transform3D(Basis.IDENTITY, Vector3(8, 1.2, -22))
+	var far := VehicleFactory.create("scrap_drone", ScriptedDriver.new(), false, false)
+	world.add_child(far)
+	far.global_transform = Transform3D(Basis.IDENTITY, Vector3(-60, 1.2, -20))
+	await _frames(30)
+	hp = target.health.current
+	var hp2 := next_to.health.current
+	var hp3 := far.health.current
+	v.specials.add("arc_coil", 1)
+	check(v.specials.fire(), "Arc Coil fires at the car ahead")
+	check(target.health.current < hp and next_to.health.current < hp2, "it hits the target and jumps to the car beside it")
+	check(far.health.current == hp3, "it doesn't reach a car 40 m from the target")
+	check(target.status.is_jammed() and next_to.status.is_jammed(), "both lose their turbo")
+	world.queue_free()
+	await _frames(2)
+	r = await _sig_range("rustjaw", Vector3.ZERO)
+	world = r[0]
+	v = r[1]
+	v.specials.add("arc_coil", 1)
+	check(not v.specials.fire() and v.specials.count("arc_coil") == 1, "with nobody ahead Arc Coil holds its charge")
+	world.queue_free()
+	await _frames(2)
+
+
+# --- Update 2: arenas, surfaces, bot difficulty ----------------------------------------
+
+func _all_arenas() -> void:
+	for id in Arenas.ids():
+		var m := YardMatch.new()
+		m.arena_id = id
+		m.bot_count = 3
+		m.difficulty = "iron"
+		m.bot_cars = "drones"
+		root.add_child(m)
+		await _frames(30)
+		check(m.arena is ArenaBase and m.arena.display_name != "", "%s loads" % id)
+		check(m.arena.pickup_spots().size() >= 10, "%s has pickups" % id)
+		check(m.arena.spawn_points.size() >= 4 and m.arena.drone_routes.size() >= 3, "%s has spawns and bot routes" % id)
+		check(m.player.global_transform.basis.y.y > 0.8 and m.player.global_position.y > 0.0, "%s: the player starts on its wheels" % id)
+		for d in m.drones:
+			(d.driver as DroneDriver).aggressive = false
+		var last: Array = []
+		var travelled: Array[float] = []
+		for d in m.drones:
+			last.append(d.global_position)
+			travelled.append(0.0)
+		for i in 60 * 20:
+			await physics_frame
+			if i % 30 == 0:
+				for k in m.drones.size():
+					travelled[k] += _flat(m.drones[k].global_position - last[k]).length()
+					last[k] = m.drones[k].global_position
+		for k in m.drones.size():
+			_measure["%s_bot_%d_travel_20s_m" % [id, k + 1]] = travelled[k]
+			check(travelled[k] > 140.0, "%s: bot %d keeps lapping (%.0f m in 20 s)" % [id, k + 1, travelled[k]])
+			var pos: Vector3 = m.drones[k].global_position
+			check(absf(pos.x) < 82.0 and absf(pos.z) < 82.0 and pos.y > -2.0, "%s: bot %d stays inside the arena" % [id, k + 1])
+		m.queue_free()
+		await _frames(3)
+
+
+func _surfaces() -> void:
+	# Ice: a car turning hard on the Frozen Wharf basin slides much more than on the pier.
+	var slides := {}
+	for where in [["pier", Vector3(-70, 1.2, 66)], ["ice", Vector3(-70, 1.2, -54)]]:
+		var m := YardMatch.new()
+		m.arena_id = "frozen_wharf"
+		m.bot_count = 1
+		root.add_child(m)
+		await _frames(20)
+		m.drones[0].driver = ScriptedDriver.new()
+		m.drones[0].global_position = Vector3(70, 1.2, 70)
+		var drv := ScriptedDriver.new()
+		m.player.driver = drv
+		m.player.global_transform = Transform3D(Basis(Vector3.UP, -PI * 0.5), where[1])
+		m.player.linear_velocity = Vector3.ZERO
+		await _frames(30)
+		check(m.player.surface == ("ice" if where[0] == "ice" else ""), "the car knows it's on the %s" % where[0])
+		drv.frame.throttle = 1.0
+		await _frames(110)
+		drv.frame.steer = 1.0
+		var peak := 0.0
+		for i in 40:
+			await physics_frame
+			peak = maxf(peak, absf(m.player.drive.lateral))
+		slides[where[0]] = peak
+		m.queue_free()
+		await _frames(3)
+	_measure["slide_on_pier_ms"] = slides["pier"]
+	_measure["slide_on_ice_ms"] = slides["ice"]
+	check(slides["ice"] > slides["pier"] * 1.5, "cars slide more on ice (%.1f vs %.1f m/s)" % [slides["ice"], slides["pier"]])
+
+	# Mud: top speed in the Blackwater Bog mud is about half.
+	var m2 := YardMatch.new()
+	m2.arena_id = "blackwater_bog"
+	m2.bot_count = 1
+	root.add_child(m2)
+	await _frames(20)
+	m2.drones[0].driver = ScriptedDriver.new()
+	m2.drones[0].global_position = Vector3(70, 1.2, -70)
+	var d2 := ScriptedDriver.new()
+	m2.player.driver = d2
+	m2.player.global_transform = Transform3D(Basis(Vector3.UP, PI * 0.5), Vector3(10, 1.2, 0))
+	m2.player.linear_velocity = Vector3.ZERO
+	await _frames(30)
+	check(m2.player.surface == "mud", "the car knows it's in the mud")
+	d2.frame.throttle = 1.0
+	await _frames(70)
+	_measure["mud_speed_ms"] = m2.player.drive.speed
+	check(m2.player.drive.speed < m2.player.stats.max_speed * 0.62, "mud holds the car to about half speed (%.1f m/s)" % m2.player.drive.speed)
+	m2.queue_free()
+	await _frames(3)
+
+
+func _bot_settings() -> void:
+	var scrap := DroneDriver.new([Vector3.ZERO, Vector3.FORWARD] as Array[Vector3], 0, 0.8)
+	scrap.set_difficulty("scrap")
+	var carnage := DroneDriver.new([Vector3.ZERO, Vector3.FORWARD] as Array[Vector3], 0, 0.8)
+	carnage.set_difficulty("carnage")
+	check(scrap.hunt_range < 38.0 and carnage.hunt_range > 38.0, "Scrap bots notice you later, Carnage bots sooner")
+	check(carnage.uses_turbo and not scrap.uses_turbo, "Carnage bots use turbo")
+	# Roster bots: real cars with their own specials, never the player's own car.
+	var m := YardMatch.new()
+	m.arena_id = "foundry_yard"
+	m.bot_count = 5
+	m.bot_cars = "roster"
+	m.difficulty = "carnage"
+	m.player_car = "rustjaw"
+	root.add_child(m)
+	await _frames(30)
+	check(m.drones.size() == 5, "five bots when asked for five")
+	var ok := true
+	for d in m.drones:
+		ok = ok and d.stats.id != "scrap_drone" and d.stats.id != "rustjaw" and d.specials.signature_id != ""
+	check(ok, "roster bots drive roster cars with their own specials, not yours")
+	# Carnage roster bots fire their specials at you.
+	var fired := []
+	for d in m.drones:
+		d.specials.fired.connect(func(_v, id): fired.append(id))
+	m.player.driver = ScriptedDriver.new()
+	var t := 0.0
+	while fired.is_empty() and t < 40.0:
+		await physics_frame
+		t += 1.0 / 60.0
+	check(not fired.is_empty(), "bots fire their specials (first after %.1f s)" % t)
+	m.queue_free()
+	await _frames(3)

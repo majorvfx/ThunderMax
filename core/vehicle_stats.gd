@@ -50,6 +50,11 @@ var air_control := 0.3
 var air_upright := 3.0
 var upright_strength := 8.0
 var mass := 1400.0
+var body_width := 1.9            ## collision box (m)
+var body_height := 0.75
+var body_length := 4.3
+var wheel_track := 0.85          ## wheel distance from the centre line (m)
+var wheel_base := 1.3            ## wheel distance from the middle, front and back (m)
 var ride_height := 0.6           ## suspension rest length (m)
 var suspension_hz := 2.2
 var suspension_damping := 0.55
@@ -113,7 +118,8 @@ func apply_dict(d: Dictionary) -> void:
 	for key in d.keys():
 		var value: Variant = d[key]
 		if typeof(value) == TYPE_DICTIONARY:
-			apply_dict(value)
+			if String(key) != "signature":   # the car's own special is read by SpecialWeapons
+				apply_dict(value)
 			continue
 		var k := String(key)
 		if k == "name":
@@ -150,3 +156,24 @@ func _property_names() -> Dictionary:
 		if p["usage"] & PROPERTY_USAGE_SCRIPT_VARIABLE:
 			names[p["name"]] = true
 	return names
+
+
+## The "Grip" handling preset from the tuning panel: the car sheds speed fast when
+## you let off, slides less and snaps straight sooner, for a tighter old-school
+## arcade feel. Each value is scaled from the car's own numbers and kept inside
+## the tuning ranges.
+const GRIP_PRESET := {
+	"coast_decel": 2.2,
+	"brake_decel": 1.15,
+	"grip": 1.25,
+	"drift_grip": 1.6,
+	"steer_return_time": 0.6,
+	"yaw_response": 1.2,
+}
+
+
+func apply_grip_preset() -> void:
+	for entry in TUNABLE:
+		var key: String = entry[0]
+		if GRIP_PRESET.has(key):
+			set(key, clampf(float(get(key)) * float(GRIP_PRESET[key]), entry[1], entry[2]))

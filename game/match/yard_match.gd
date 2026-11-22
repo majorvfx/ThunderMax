@@ -1,12 +1,14 @@
 class_name YardMatch
 extends Node3D
-## Milestone 1 sandbox: Rustjaw vs. Scrap Drones in the Foundry Yard.
-## Wreck drones, grab pickups, tune the handling. Drones respawn; so do you.
+## A match in any arena: your car against bots (Scrap Drones, or cars from the
+## roster) at the chosen difficulty. Wreck them, grab pickups, tune the handling.
+## Bots respawn; so do you. Set arena / bot_count / difficulty / bot_cars before
+## adding it to the tree, or it uses the saved match settings.
 
 signal quit_to_title
 signal restart_requested
+signal change_car_requested
 
-const DRONE_COUNT := 3
 const DRONE_RESPAWN := 5.0
 const PLAYER_RESPAWN := 3.0
 const BARREL_RESPAWN := 25.0
@@ -24,7 +26,11 @@ const PLAYER_WRECKED_LINES := [
 	"WRECKED. The furnace will have to wait.",
 ]
 
-var arena: FoundryYard
+var arena: ArenaBase
+var arena_id := ""         ## empty uses GameSettings.arena
+var bot_count := -1        ## -1 uses GameSettings.bot_count
+var difficulty := ""       ## empty uses GameSettings.difficulty
+var bot_cars := ""         ## empty uses GameSettings.bot_cars
 var player: ArcadeVehicle
 var player_driver: PlayerDriver
 var camera: ChaseCamera
@@ -35,6 +41,7 @@ var mirror: RearMirror
 var governor: FrameGovernor
 var drones: Array[ArcadeVehicle] = []
 var wrecks := 0
+var player_car := ""   ## car id; empty uses the one chosen on the select screen
 var _ui: CanvasLayer
 var _rng := RandomNumberGenerator.new()
 
@@ -44,8 +51,16 @@ func _ready() -> void:
 	GameSettings.apply_controls()
 	_rng.randomize()
 
-	arena = FoundryYard.new()
-	arena.name = "FoundryYard"
+	if arena_id == "":
+		arena_id = GameSettings.arena
+	if bot_count < 0:
+		bot_count = GameSettings.bot_count
+	if difficulty == "":
+		difficulty = GameSettings.difficulty
+	if bot_cars == "":
+		bot_cars = GameSettings.bot_cars
+	arena = Arenas.create(arena_id)
+	arena.name = "Arena"
 	add_child(arena)
 
 	governor = FrameGovernor.new()
@@ -53,7 +68,12 @@ func _ready() -> void:
 	add_child(governor)
 
 	player_driver = PlayerDriver.new(1, -1)
-	player = VehicleFactory.create("rustjaw", player_driver, true)
+	if player_car == "":
+		player_car = GameSettings.car
+	player = VehicleFactory.create(player_car, player_driver, true)
+	if player == null:
+		player_car = "rustjaw"
+		player = VehicleFactory.create(player_car, player_driver, true)
 	add_child(player)
 	player.global_transform = arena.player_spawn
 	player.reset_physics_interpolation()
@@ -71,7 +91,7 @@ func _ready() -> void:
 	camera.target = player
 	camera.current = true
 
-	for i in DRONE_COUNT:
+	for i in bot_count:
 		_spawn_drone(i)
 	_spawn_pickups()
 	for spot in arena.barrel_spots:
@@ -97,6 +117,7 @@ func _build_ui() -> void:
 	_ui.add_child(pause_menu)
 	pause_menu.restart_requested.connect(_restart)
 	pause_menu.quit_requested.connect(_quit)
+	pause_menu.change_car_requested.connect(_change_car)
 	pause_menu.settings_changed.connect(_apply_quality)
 	mirror = RearMirror.new()
 	mirror.target = player
@@ -104,8 +125,8 @@ func _build_ui() -> void:
 	_ui.move_child(mirror, hud.get_index())
 	tuning = TuningPanel.new()
 	_ui.add_child(tuning)
-	hud.message("THE FOUNDRY YARD", 3.0)
-	hud.message("Wreck the drones. Mind the drums.", 3.5)
+	hud.message(arena.display_name, 3.0)
+	hud.message(arena.tagline, 3.5)
 
 
 func _apply_quality() -> void:
@@ -139,7 +160,7 @@ func run_command(cmd: String) -> void:
 			hud.message("REAR-VIEW MIRROR " + ("ON" if mirror.toggle() else "OFF"), 1.0)
 		"enemies_left":
 			var alive := drones.filter(func(d): return d.is_alive()).size()
-			hud.message("%d %s STILL RUNNING" % [alive, "DRONE" if alive == 1 else "DRONES"], 2.0)
+			hud.message("%d %s STILL RUNNING" % [alive, "ENEMY" if alive == 1 else "ENEMIES"], 2.0)
 		"pause":
 			pause_menu.open()
 	if cmd != "pause":
@@ -167,8 +188,14 @@ func _unhandled_input(event: InputEvent) -> void:
 func _spawn_drone(i: int) -> void:
 	var route: Array[Vector3] = arena.drone_routes[i % arena.drone_routes.size()]
 	var driver := DroneDriver.new(route, (i * 3) % route.size(), _rng.randf_range(0.7, 0.9))
-	var drone := VehicleFactory.create("scrap_drone", driver, false)
-	drone.name = "ScrapDrone%d" % (i + 1)
+	driver.set_difficulty(difficulty)
+	var car_id := "scrap_drone"
+	if bot_cars == "roster":
+		var pool := GameData.roster()
+		pool.erase(player_car)
+		car_id = pool[_rng.randi() % pool.size()] if not pool.is_empty() else "scrap_drone"
+	var drone := VehicleFactory.create(car_id, driver, false)
+	drone.name = "Bot%d" % (i + 1)
 	add_child(drone)
 	drone.global_transform = _route_transform(route, driver.index)
 	drone.reset_physics_interpolation()
@@ -281,6 +308,11 @@ func _on_joy_changed(device: int, connected: bool) -> void:
 func _restart() -> void:
 	get_tree().paused = false
 	restart_requested.emit()
+
+
+func _change_car() -> void:
+	get_tree().paused = false
+	change_car_requested.emit()
 
 
 func _quit() -> void:

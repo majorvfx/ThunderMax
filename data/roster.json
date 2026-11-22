@@ -1,0 +1,17 @@
+{
+  "_note": "Cars on the select screen, in order. Each one's numbers and its own special live in data/vehicles/<id>.json.",
+  "cars": [
+    "rustjaw",
+    "cinder",
+    "hogshead",
+    "sawback",
+    "warrant",
+    "bastion",
+    "mourner",
+    "bucketmouth",
+    "tonnage",
+    "vandal",
+    "lancet",
+    "sermon"
+  ]
+}

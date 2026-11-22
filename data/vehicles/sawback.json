@@ -1,0 +1,82 @@
+{
+  "id": "sawback",
+  "name": "Sawback",
+  "class": "medium",
+  "paint": "sawback",
+  "description": "A city street sweeper. The brushes were swapped for blades a long time ago.",
+  "health": {
+    "max_health": 110
+  },
+  "drive": {
+    "max_speed": 28.0,
+    "accel": 18.0,
+    "accel_falloff": 0.5,
+    "brake_decel": 44.0,
+    "reverse_max_speed": 10.0,
+    "reverse_accel": 13.0,
+    "coast_decel": 7.0
+  },
+  "steering": {
+    "turn_rate_deg": 150.0,
+    "high_speed_turn_scale": 0.75,
+    "pivot_turn": 0.3,
+    "full_turn_speed": 4.0,
+    "steer_ramp_time": 0.16,
+    "steer_return_time": 0.08,
+    "analog_steer_curve": 1.4,
+    "yaw_response": 13.0
+  },
+  "grip": {
+    "grip": 10.0,
+    "drift_grip": 2.2,
+    "drift_min_speed": 12.0,
+    "drift_turn_boost": 1.35,
+    "drift_brake_scale": 0.25,
+    "tight_turn_boost": 1.7,
+    "tight_turn_drag": 5.0
+  },
+  "body": {
+    "mass": 1700.0,
+    "body_width": 2.0,
+    "body_height": 0.95,
+    "body_length": 4.4,
+    "wheel_track": 0.9,
+    "wheel_base": 1.35,
+    "gravity_scale": 1.6,
+    "air_control": 0.3,
+    "air_upright": 3.0,
+    "upright_strength": 8.5,
+    "ride_height": 0.6,
+    "suspension_hz": 2.2,
+    "suspension_damping": 0.55
+  },
+  "combat": {
+    "ram_power": 1.2,
+    "ram_armor": 1.2
+  },
+  "turbo": {
+    "turbo_capacity": 100.0,
+    "turbo_drain": 35.0,
+    "turbo_regen": 4.0,
+    "turbo_speed_mult": 1.4,
+    "turbo_thrust": 18.0,
+    "turbo_kick": 4.0,
+    "turbo_kick_cost": 6.0,
+    "turbo_air_thrust": 16.0,
+    "turbo_air_lift": 7.0
+  },
+  "signature": {
+    "id": "ripsaw",
+    "name": "Ripsaw",
+    "kind": "sawblade",
+    "description": "A spinning blade that runs along the ground and bounces off walls. Three bounces, then it shatters.",
+    "damage": 20.0,
+    "speed": 40.0,
+    "life_s": 3.5,
+    "bounces": 3,
+    "curve_deg_per_s": 14.0,
+    "view_cone_deg": 25.0,
+    "recharge_s": 13.0,
+    "cooldown": 0.6
+  }
+}

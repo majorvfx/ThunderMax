@@ -47,6 +47,93 @@ static func material(kind: String) -> StandardMaterial3D:
 		"soot":
 			m.albedo_color = Color(0.03, 0.025, 0.02)
 			m.roughness = 1.0
+		"cinder":
+			m.albedo_color = Color(0.55, 0.4, 0.12)
+			m.albedo_texture = grime_texture(53, 0.6)
+			m.metallic = 0.3
+			m.roughness = 0.8
+		"tanker":
+			m.albedo_color = Color(0.27, 0.29, 0.25)
+			m.albedo_texture = grime_texture(61, 0.55)
+			m.metallic = 0.5
+			m.roughness = 0.7
+		"sweeper":
+			m.albedo_color = Color(0.33, 0.36, 0.17)
+			m.albedo_texture = grime_texture(71, 0.55)
+			m.metallic = 0.3
+			m.roughness = 0.85
+		"fuel_cell":
+			m.albedo_color = Color(0.45, 0.07, 0.04)
+			m.metallic = 0.4
+			m.roughness = 0.6
+		"casket":
+			m.albedo_color = Color(0.16, 0.09, 0.06)
+			m.albedo_texture = grime_texture(83, 0.5)
+			m.roughness = 0.7
+		"canvas":
+			m.albedo_color = Color(0.32, 0.3, 0.2)
+			m.albedo_texture = grime_texture(89, 0.45)
+			m.roughness = 1.0
+		"slag":
+			m.albedo_color = Color(0.12, 0.1, 0.09)
+			m.albedo_texture = grime_texture(97, 0.7)
+			m.roughness = 1.0
+			m.emission_enabled = true
+			m.emission = Color(0.9, 0.25, 0.05)
+			m.emission_energy_multiplier = 0.35
+		"warrant":
+			m.albedo_color = Color(0.13, 0.15, 0.18)
+			m.albedo_texture = grime_texture(101, 0.55)
+			m.metallic = 0.45
+			m.roughness = 0.7
+		"bastion":
+			m.albedo_color = Color(0.28, 0.29, 0.2)
+			m.albedo_texture = grime_texture(103, 0.6)
+			m.metallic = 0.3
+			m.roughness = 0.9
+		"mourner":
+			m.albedo_color = Color(0.09, 0.08, 0.08)
+			m.albedo_texture = grime_texture(107, 0.5)
+			m.metallic = 0.5
+			m.roughness = 0.6
+		"bucketmouth":
+			m.albedo_color = Color(0.55, 0.42, 0.1)
+			m.albedo_texture = grime_texture(109, 0.6)
+			m.metallic = 0.3
+			m.roughness = 0.85
+		"tonnage":
+			m.albedo_color = Color(0.4, 0.3, 0.22)
+			m.albedo_texture = grime_texture(113, 0.6)
+			m.metallic = 0.3
+			m.roughness = 0.9
+		"vandal":
+			m.albedo_color = Color(0.36, 0.08, 0.06)
+			m.albedo_texture = grime_texture(127, 0.55)
+			m.metallic = 0.5
+			m.roughness = 0.6
+		"lancet":
+			m.albedo_color = Color(0.5, 0.5, 0.47)
+			m.albedo_texture = grime_texture(131, 0.45)
+			m.metallic = 0.6
+			m.roughness = 0.5
+		"sermon":
+			m.albedo_color = Color(0.2, 0.12, 0.26)
+			m.albedo_texture = grime_texture(137, 0.5)
+			m.metallic = 0.55
+			m.roughness = 0.5
+		"chrome":
+			m.albedo_color = Color(0.6, 0.6, 0.62)
+			m.metallic = 0.95
+			m.roughness = 0.25
+		"amber":
+			m.albedo_color = Color(1.0, 0.6, 0.1)
+			m.emission_enabled = true
+			m.emission = Color(1.0, 0.55, 0.1)
+			m.emission_energy_multiplier = 3.0
+		"blade":
+			m.albedo_color = Color(0.55, 0.55, 0.57)
+			m.metallic = 0.9
+			m.roughness = 0.3
 		"beacon":
 			m.albedo_color = Color(1.0, 0.1, 0.05)
 			m.emission_enabled = true
@@ -66,6 +153,34 @@ static func material(kind: String) -> StandardMaterial3D:
 			m.emission = Color(1.0, 0.5, 0.15)
 			m.emission_energy_multiplier = 3.0
 	_materials[kind] = m
+	return m
+
+
+## Soft round puff for smoke and exhaust trails: additive or alpha, tinted by the
+## particle colour.
+static func soft_puff(additive: bool) -> StandardMaterial3D:
+	var key := "soft_puff_add" if additive else "soft_puff"
+	if _materials.has(key):
+		return _materials[key]
+	var g := Gradient.new()
+	g.offsets = PackedFloat32Array([0.0, 0.45, 1.0])
+	g.colors = PackedColorArray([Color(1, 1, 1, 1), Color(1, 1, 1, 0.45), Color(1, 1, 1, 0)])
+	var tex := GradientTexture2D.new()
+	tex.gradient = g
+	tex.fill = GradientTexture2D.FILL_RADIAL
+	tex.fill_from = Vector2(0.5, 0.5)
+	tex.fill_to = Vector2(0.5, 0.0)
+	tex.width = 64
+	tex.height = 64
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	if additive:
+		m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	m.vertex_color_use_as_albedo = true
+	m.albedo_texture = tex
+	_materials[key] = m
 	return m
 
 
