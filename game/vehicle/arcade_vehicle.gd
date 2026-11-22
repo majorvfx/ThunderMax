@@ -42,6 +42,8 @@ var wheel_distance: Array[float] = [0.6, 0.6, 0.6, 0.6]
 var wheel_contact: Array[bool] = [false, false, false, false]
 var last_impact := 0.0   ## m/s of the latest impact, for camera shake and sound
 var last_attacker: Node = null
+var surface := ""   ## what the ground is under the car: "", "ice" or "mud" (from the arena)
+var _arena: Node = null
 
 var _last_out_velocity := Vector3.ZERO
 var _has_last := false
@@ -133,7 +135,16 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	var along_normal := v.dot(n)
 	drive.vertical = v.y
 
+	var lateral_before := drive.lateral
 	ArcadeHandling.step(stats, drive, drive_frame, grounded, dt)
+	if grounded and surface == "ice":
+		# Sheet ice: the tyres barely bite, so the car keeps most of its slide.
+		drive.lateral = lerpf(lateral_before, drive.lateral, 0.12)
+	elif grounded and surface == "mud":
+		# Sucking mud: top speed drops to just over half and the car labours.
+		var mud_cap := stats.max_speed * (0.55 if not drive.boosting else 0.75)
+		if drive.speed > mud_cap:
+			drive.speed = move_toward(drive.speed, mud_cap, 30.0 * dt)
 	if status.is_snared():
 		# Spike Net: the tangled wheels can't turn fast, so speed bleeds down hard.
 		var cap := stats.max_speed * status.snare_speed_scale
@@ -272,6 +283,9 @@ func _play_impact(volume: float) -> void:
 func _physics_process(delta: float) -> void:
 	if not _alive or stats == null:
 		return
+	if _arena == null or not is_instance_valid(_arena):
+		_arena = get_tree().get_first_node_in_group("arena")
+	surface = (_arena as ArenaBase).surface_at(global_position) if _arena is ArenaBase else ""
 	var burn := status.tick(delta)
 	if burn > 0.0:
 		take_damage(burn, status.burn_source as Node)

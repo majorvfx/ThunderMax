@@ -28,8 +28,10 @@ Settings (controls, remaps, your car) and saved handling tuning live in
 `%APPDATA%\Iron Carnage`. The first time Iron Carnage runs it copies them over from Thunder Max,
 so your remaps carry across.
 
-Press **A** or **Enter** on the title screen, pick a car (left / right, then **A**), and you
-start in the Foundry Yard with three Scrap Drones running laps. Get close and they turn on you.
+Press **A** or **Enter** on the title screen, pick a car (left / right, then **A**), then set up
+the match: arena, how many opponents (1 to 6), difficulty, and whether they drive Scrap Drones
+or random cars from the roster. Up / down picks a row, left / right changes it, **A** starts.
+In the Foundry Yard the Scrap Drones start out running laps. Get close and they turn on you.
 Wreck them, grab pickups and weapon crates, set off the fuel drums. Your car is remembered for
 next time; **Change car** in the pause menu goes back to the select screen.
 
@@ -207,6 +209,32 @@ to the right stick.
 
 ![Remap controls](docs/screenshots/remap_controls.png)
 
+## What's new in Iron Carnage update 2
+
+- **Three new arenas**, picked on the new match setup screen:
+
+  | Arena | What's there |
+  | --- | --- |
+  | **Refinery Row** | Burning flare stacks in the corners, two tank farms, a pipe bridge 4 m up down the middle with ramps at both ends, fuel drums everywhere. |
+  | **Frozen Wharf** | An iced-over harbour. The north half is sheet ice where cars slide; a beached freighter lies across it with ramps up to its deck. Container canyons and dead cranes on the pier. Snow. |
+  | **Blackwater Bog** | Swamp at night. Sucking mud pools hold cars to about half speed; a boardwalk on stilts loops the middle; dead trees, a stilt shack, a sunken bus. |
+
+  | Refinery Row | Frozen Wharf |
+  | --- | --- |
+  | ![Refinery Row](docs/screenshots/arena_refinery_row.png) | ![Frozen Wharf](docs/screenshots/arena_frozen_wharf.png) |
+  | **Blackwater Bog** | **Match setup** |
+  | ![Blackwater Bog](docs/screenshots/arena_blackwater_bog.png) | ![Match setup](docs/screenshots/match_setup.png) |
+
+- **Bot difficulty**: **Scrap** (slow to notice you, poor shots), **Iron** (the old behaviour) and
+  **Carnage** (hunts from across the arena, uses turbo, fires weapons and specials more).
+- **Opponents in roster cars**: bots can drive any of the twelve cars (never yours) and use
+  their own specials and pickup weapons, aimed the right way (rear drops when you're behind,
+  close-range specials when you're close).
+- **1 to 6 opponents.**
+- **Ice and mud**: a car on ice keeps most of its slide; mud cuts top speed to about half
+  (three quarters with turbo).
+- The pause menu's **Change car or arena** goes back through car select and match setup.
+
 ## What's new in Iron Carnage update 1
 
 - **Renamed** to Iron Carnage everywhere: window, title screen, save folder, shortcut.
@@ -220,8 +248,8 @@ to the right stick.
 - **Grip handling preset**: in the tuning panel, **Grip** makes the car stop quicker off the
   throttle, slide less and straighten faster. **Save** keeps it; **Reset** undoes it.
 
-Next up (update 2): the Refinery Row arena, the Gauntlet campaign with Scrap / Iron / Carnage
-difficulties, The Assessor boss, a tally screen and bot difficulty levels.
+Next up: the Gauntlet campaign through the arenas, The Assessor boss, a tally screen after
+each round.
 
 ## What's in Milestone 2
 

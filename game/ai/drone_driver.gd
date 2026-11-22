@@ -3,7 +3,10 @@ extends RefCounted
 ## Scrap Drones: lap the yard on waypoints, but turn on the player when they get close.
 ## They fire their guns in bursts, drop mines or fire a Tailgunner round when chased,
 ## raise a Bulwark when hurt and throw Cold Snaps at a player in front of them. A player
-## under Blackout can't be found. One difficulty for now.
+## under Blackout can't be found. Three difficulties (set_difficulty): Scrap is
+## slow to notice you and a poor shot; Carnage hunts from across the arena, uses
+## turbo, fires its weapons and its own special. Bots in roster cars use their
+## car's special and any pickup weapons they've collected.
 
 var waypoints: Array[Vector3] = []
 var index := 0
@@ -12,6 +15,14 @@ var aggressive := true
 var hunt_range := 38.0
 var fire_range := 48.0
 var fire_cone_deg := 10.0
+var burst_s := 1.1
+var rest_min := 0.9
+var rest_max := 1.8
+var think_min := 0.35
+var think_max := 0.6
+var special_chance := 0.25
+var uses_turbo := false
+var difficulty := "iron"
 
 var _frame := ArcadeHandling.ControlFrame.new()
 var _stuck := 0.0
@@ -28,6 +39,34 @@ func _init(points: Array[Vector3], start_index: int = 0, throttle: float = 0.8) 
 	index = start_index % maxi(points.size(), 1)
 	throttle_level = throttle
 	_rng.randomize()
+
+
+func set_difficulty(level: String) -> void:
+	difficulty = level
+	match level:
+		"scrap":
+			throttle_level *= 0.8
+			hunt_range = 26.0
+			fire_range = 36.0
+			fire_cone_deg = 6.0
+			burst_s = 0.7
+			rest_min = 1.6
+			rest_max = 2.8
+			think_min = 0.8
+			think_max = 1.3
+			special_chance = 0.1
+		"carnage":
+			throttle_level = minf(1.0, throttle_level * 1.15)
+			hunt_range = 70.0
+			fire_range = 60.0
+			fire_cone_deg = 14.0
+			burst_s = 1.6
+			rest_min = 0.4
+			rest_max = 0.9
+			think_min = 0.2
+			think_max = 0.35
+			special_chance = 0.5
+			uses_turbo = true
 
 
 func get_frame(vehicle: Node, dt: float) -> ArcadeHandling.ControlFrame:
@@ -74,6 +113,8 @@ func get_frame(vehicle: Node, dt: float) -> ArcadeHandling.ControlFrame:
 	f.throttle = throttle_level * (0.5 if absf(angle) > 0.9 else 1.0)
 	if prey != null and dist < 9.0 and absf(angle) < 0.5:
 		f.throttle = 1.0   # ram
+	if uses_turbo and prey != null and dist > 25.0 and absf(angle) < 0.25 and car.drive.turbo > 40.0:
+		f.turbo = true
 
 	if prey != null:
 		_combat(car, prey, dist, absf(angle), dt, f)
@@ -111,23 +152,43 @@ func _combat(car: ArcadeVehicle, prey: ArcadeVehicle, dist: float, angle: float,
 		else:
 			_burst += dt
 			f.fire_gun = true
-			if _burst > 1.1:
+			if _burst > burst_s:
 				_burst = 0.0
-				_rest = _rng.randf_range(0.9, 1.8)
+				_rest = _rng.randf_range(rest_min, rest_max)
 	# Combo moves, considered a few times a second.
 	_think -= dt
 	if _think > 0.0 or car.combos == null:
 		return
-	_think = _rng.randf_range(0.35, 0.6)
+	_think = _rng.randf_range(think_min, think_max)
 	if car.health.fraction() < 0.35 and car.status.can_afford(60.0):
 		car.combos.request_move("bulwark")
 		return
 	var to_prey := prey.global_position - car.global_position
 	var behind := to_prey.dot(car.global_transform.basis.z) > 0.0
 	var dead_behind := behind and car.global_transform.basis.z.angle_to(to_prey) < 0.4
+	if car.specials != null and _rng.randf() < special_chance and _want_special(car, dist, angle, behind):
+		f.fire_special = true
+		return
 	if behind and dist < 16.0 and _rng.randf() < 0.5:
 		car.combos.request_move("scrap_mine")
 	elif dead_behind and dist < 35.0 and _rng.randf() < 0.3:
 		car.combos.request_move("tailgunner")
 	elif not behind and dist > 10.0 and dist < 40.0 and angle < 0.2 and _rng.randf() < 0.18:
 		car.combos.request_move("cold_snap")
+
+
+## Whether the selected special would land from here: rear-dropped specials when
+## the target is behind, close-range ones when it's near, the rest when it's ahead.
+func _want_special(car: ArcadeVehicle, dist: float, angle: float, behind: bool) -> bool:
+	var sp := car.specials
+	if not sp.has_shot():
+		return false
+	var data: Dictionary = sp.weapons.get(sp.selected, {})
+	match str(data.get("kind", "")):
+		"pall", "rockslide", "satchel":
+			return behind and dist < 22.0
+		"shockwave", "ring", "hop", "scoop":
+			return dist < 9.0
+		"cloak":
+			return car.health.fraction() < 0.5
+	return not behind and angle < 0.25 and dist < 45.0

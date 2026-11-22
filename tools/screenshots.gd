@@ -165,6 +165,28 @@ func _run() -> void:
 			["tonnage", "sig_rockslide", 0.6, -14.0], ["vandal", "sig_shrapnel_ring", 0.1, 8.0],
 			["lancet", "sig_ghost_run", 0.4, 20.0], ["sermon", "sig_hydraulic_hop", 0.3, 9.0]]:
 		await _signature_shot(shot[0], shot[1], shot[2], shot[3])
+	# The match setup screen, and a look at each arena with bots in roster cars.
+	var ms := MatchSetup.new()
+	root.add_child(ms)
+	await _sim(0.3)
+	_save("match_setup")
+	ms.queue_free()
+	await _sim(0.1)
+	for a in [["refinery_row", Vector3(0, 1.2, 62), 0.0], ["frozen_wharf", Vector3(-62, 1.2, -10), PI * 0.85], ["blackwater_bog", Vector3(-62, 1.2, 0), -PI * 0.5]]:
+		var am := YardMatch.new()
+		am.arena_id = a[0]
+		am.bot_count = 4
+		am.bot_cars = "roster"
+		am.player_car = "tonnage"
+		root.add_child(am)
+		await _sim(0.5)
+		am.player.global_transform = Transform3D(Basis(Vector3.UP, a[2]), a[1])
+		am.player.reset_physics_interpolation()
+		am.camera.snap()
+		await _sim(2.5)
+		_save("arena_" + a[0])
+		am.queue_free()
+		await _sim(0.2)
 	# Every new car on the select screen.
 	for id in ["warrant", "bastion", "mourner", "bucketmouth", "tonnage", "vandal", "lancet", "sermon"]:
 		var sel := CarSelect.new()

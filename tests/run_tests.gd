@@ -51,6 +51,10 @@ func _run() -> void:
 	await _car_select()
 	print("== Arena smoke test ==")
 	await _arena_smoke()
+	print("== Arenas, surfaces and bots ==")
+	await _all_arenas()
+	await _surfaces()
+	await _bot_settings()
 	_write_report()
 	print("")
 	print("%d passed, %d failed" % [_pass, _fail])
@@ -1676,3 +1680,128 @@ func _new_pickup_weapons() -> void:
 	check(not v.specials.fire() and v.specials.count("arc_coil") == 1, "with nobody ahead Arc Coil holds its charge")
 	world.queue_free()
 	await _frames(2)
+
+
+# --- Update 2: arenas, surfaces, bot difficulty ----------------------------------------
+
+func _all_arenas() -> void:
+	for id in Arenas.ids():
+		var m := YardMatch.new()
+		m.arena_id = id
+		m.bot_count = 3
+		m.difficulty = "iron"
+		m.bot_cars = "drones"
+		root.add_child(m)
+		await _frames(30)
+		check(m.arena is ArenaBase and m.arena.display_name != "", "%s loads" % id)
+		check(m.arena.pickup_spots().size() >= 10, "%s has pickups" % id)
+		check(m.arena.spawn_points.size() >= 4 and m.arena.drone_routes.size() >= 3, "%s has spawns and bot routes" % id)
+		check(m.player.global_transform.basis.y.y > 0.8 and m.player.global_position.y > 0.0, "%s: the player starts on its wheels" % id)
+		for d in m.drones:
+			(d.driver as DroneDriver).aggressive = false
+		var last: Array = []
+		var travelled: Array[float] = []
+		for d in m.drones:
+			last.append(d.global_position)
+			travelled.append(0.0)
+		for i in 60 * 20:
+			await physics_frame
+			if i % 30 == 0:
+				for k in m.drones.size():
+					travelled[k] += _flat(m.drones[k].global_position - last[k]).length()
+					last[k] = m.drones[k].global_position
+		for k in m.drones.size():
+			_measure["%s_bot_%d_travel_20s_m" % [id, k + 1]] = travelled[k]
+			check(travelled[k] > 140.0, "%s: bot %d keeps lapping (%.0f m in 20 s)" % [id, k + 1, travelled[k]])
+			var pos: Vector3 = m.drones[k].global_position
+			check(absf(pos.x) < 82.0 and absf(pos.z) < 82.0 and pos.y > -2.0, "%s: bot %d stays inside the arena" % [id, k + 1])
+		m.queue_free()
+		await _frames(3)
+
+
+func _surfaces() -> void:
+	# Ice: a car turning hard on the Frozen Wharf basin slides much more than on the pier.
+	var slides := {}
+	for where in [["pier", Vector3(-70, 1.2, 66)], ["ice", Vector3(-70, 1.2, -54)]]:
+		var m := YardMatch.new()
+		m.arena_id = "frozen_wharf"
+		m.bot_count = 1
+		root.add_child(m)
+		await _frames(20)
+		m.drones[0].driver = ScriptedDriver.new()
+		m.drones[0].global_position = Vector3(70, 1.2, 70)
+		var drv := ScriptedDriver.new()
+		m.player.driver = drv
+		m.player.global_transform = Transform3D(Basis(Vector3.UP, -PI * 0.5), where[1])
+		m.player.linear_velocity = Vector3.ZERO
+		await _frames(30)
+		check(m.player.surface == ("ice" if where[0] == "ice" else ""), "the car knows it's on the %s" % where[0])
+		drv.frame.throttle = 1.0
+		await _frames(110)
+		drv.frame.steer = 1.0
+		var peak := 0.0
+		for i in 40:
+			await physics_frame
+			peak = maxf(peak, absf(m.player.drive.lateral))
+		slides[where[0]] = peak
+		m.queue_free()
+		await _frames(3)
+	_measure["slide_on_pier_ms"] = slides["pier"]
+	_measure["slide_on_ice_ms"] = slides["ice"]
+	check(slides["ice"] > slides["pier"] * 1.5, "cars slide more on ice (%.1f vs %.1f m/s)" % [slides["ice"], slides["pier"]])
+
+	# Mud: top speed in the Blackwater Bog mud is about half.
+	var m2 := YardMatch.new()
+	m2.arena_id = "blackwater_bog"
+	m2.bot_count = 1
+	root.add_child(m2)
+	await _frames(20)
+	m2.drones[0].driver = ScriptedDriver.new()
+	m2.drones[0].global_position = Vector3(70, 1.2, -70)
+	var d2 := ScriptedDriver.new()
+	m2.player.driver = d2
+	m2.player.global_transform = Transform3D(Basis(Vector3.UP, PI * 0.5), Vector3(10, 1.2, 0))
+	m2.player.linear_velocity = Vector3.ZERO
+	await _frames(30)
+	check(m2.player.surface == "mud", "the car knows it's in the mud")
+	d2.frame.throttle = 1.0
+	await _frames(70)
+	_measure["mud_speed_ms"] = m2.player.drive.speed
+	check(m2.player.drive.speed < m2.player.stats.max_speed * 0.62, "mud holds the car to about half speed (%.1f m/s)" % m2.player.drive.speed)
+	m2.queue_free()
+	await _frames(3)
+
+
+func _bot_settings() -> void:
+	var scrap := DroneDriver.new([Vector3.ZERO, Vector3.FORWARD] as Array[Vector3], 0, 0.8)
+	scrap.set_difficulty("scrap")
+	var carnage := DroneDriver.new([Vector3.ZERO, Vector3.FORWARD] as Array[Vector3], 0, 0.8)
+	carnage.set_difficulty("carnage")
+	check(scrap.hunt_range < 38.0 and carnage.hunt_range > 38.0, "Scrap bots notice you later, Carnage bots sooner")
+	check(carnage.uses_turbo and not scrap.uses_turbo, "Carnage bots use turbo")
+	# Roster bots: real cars with their own specials, never the player's own car.
+	var m := YardMatch.new()
+	m.arena_id = "foundry_yard"
+	m.bot_count = 5
+	m.bot_cars = "roster"
+	m.difficulty = "carnage"
+	m.player_car = "rustjaw"
+	root.add_child(m)
+	await _frames(30)
+	check(m.drones.size() == 5, "five bots when asked for five")
+	var ok := true
+	for d in m.drones:
+		ok = ok and d.stats.id != "scrap_drone" and d.stats.id != "rustjaw" and d.specials.signature_id != ""
+	check(ok, "roster bots drive roster cars with their own specials, not yours")
+	# Carnage roster bots fire their specials at you.
+	var fired := []
+	for d in m.drones:
+		d.specials.fired.connect(func(_v, id): fired.append(id))
+	m.player.driver = ScriptedDriver.new()
+	var t := 0.0
+	while fired.is_empty() and t < 40.0:
+		await physics_frame
+		t += 1.0 / 60.0
+	check(not fired.is_empty(), "bots fire their specials (first after %.1f s)" % t)
+	m.queue_free()
+	await _frames(3)

@@ -1,5 +1,5 @@
 extends Node
-## Entry point: title screen, car select, then the Foundry Yard. Owns the music.
+## Entry point: title screen, car select, match setup, then the match. Owns the music.
 
 var _music: AudioStreamPlayer
 var _current: Node
@@ -37,9 +37,16 @@ func _show_title() -> void:
 
 func _show_car_select() -> void:
 	var c := CarSelect.new()
-	c.chosen.connect(func(_id): _start_match(), CONNECT_DEFERRED)
+	c.chosen.connect(func(_id): _show_match_setup(), CONNECT_DEFERRED)
 	c.back_pressed.connect(_show_title, CONNECT_DEFERRED)
 	_swap(c)
+
+
+func _show_match_setup() -> void:
+	var m := MatchSetup.new()
+	m.start_pressed.connect(_start_match, CONNECT_DEFERRED)
+	m.back_pressed.connect(_show_car_select, CONNECT_DEFERRED)
+	_swap(m)
 
 
 func _start_match() -> void:

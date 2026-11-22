@@ -15,6 +15,13 @@ static var fps_mode := "auto"
 static var quality := "medium"
 static var control_preset := InputSetup.DEFAULT_PRESET
 static var car := "rustjaw"       ## the player's car, from data/roster.json
+static var arena := "foundry_yard"   ## from Arenas.LIST
+static var bot_count := 3
+static var difficulty := "iron"      ## scrap, iron or carnage
+static var bot_cars := "drones"      ## "drones" (Scrap Drones) or "roster" (any of the twelve cars)
+const DIFFICULTIES := ["scrap", "iron", "carnage"]
+const BOT_CARS := ["drones", "roster"]
+const BOT_COUNTS := [1, 2, 3, 4, 5, 6]
 static var sfx_volume := 1.0
 static var music_volume := 0.7
 static var _loaded := false
@@ -37,6 +44,16 @@ static func load_settings() -> void:
 	if int(cfg.get_value("controls", "layout_version", 1)) < LAYOUT_VERSION:
 		control_preset = InputSetup.DEFAULT_PRESET
 	car = str(cfg.get_value("player", "car", car))
+	arena = str(cfg.get_value("match", "arena", arena))
+	if not Arenas.ids().has(arena):
+		arena = "foundry_yard"
+	bot_count = clampi(int(cfg.get_value("match", "bot_count", bot_count)), 1, 6)
+	difficulty = str(cfg.get_value("match", "difficulty", difficulty))
+	if not DIFFICULTIES.has(difficulty):
+		difficulty = "iron"
+	bot_cars = str(cfg.get_value("match", "bot_cars", bot_cars))
+	if not BOT_CARS.has(bot_cars):
+		bot_cars = "drones"
 	if not GameData.roster().has(car):
 		car = "rustjaw"
 	sfx_volume = float(cfg.get_value("audio", "sfx", sfx_volume))
@@ -77,6 +94,10 @@ static func save_settings() -> void:
 	cfg.set_value("controls", "preset", control_preset)
 	cfg.set_value("controls", "layout_version", LAYOUT_VERSION)
 	cfg.set_value("player", "car", car)
+	cfg.set_value("match", "arena", arena)
+	cfg.set_value("match", "bot_count", bot_count)
+	cfg.set_value("match", "difficulty", difficulty)
+	cfg.set_value("match", "bot_cars", bot_cars)
 	cfg.set_value("audio", "sfx", sfx_volume)
 	cfg.set_value("audio", "music", music_volume)
 	InputBindings.save_to(cfg)
