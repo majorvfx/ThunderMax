@@ -23,6 +23,7 @@ var _trail: CPUParticles3D
 var _chain: MeshInstance3D  ## Slag Hook: the chain back to the car
 var _disc: Node3D           ## Ripsaw: the spinning blade
 var _run_speed := 0.0
+var _boulder: MeshInstance3D
 
 
 func setup(projectile_kind: String, from: ArcadeVehicle, projectile_data: Dictionary) -> void:
@@ -33,8 +34,10 @@ func setup(projectile_kind: String, from: ArcadeVehicle, projectile_data: Dictio
 	turn_rate = deg_to_rad(float(data.get("turn_rate_deg", data.get("curve_deg_per_s", 0.0))))
 	view_cone = deg_to_rad(float(data.get("view_cone_deg", 180.0)))
 	bounces_left = int(data.get("bounces", 0))
-	if kind == "saw":
+	gravity = float(data.get("gravity", 0.0))
+	if kind == "saw" or kind == "boulder":
 		gravity = 20.0   # it rides along the ground
+	add_to_group("projectiles")
 
 
 func launch(at: Vector3, vel: Vector3) -> void:
@@ -70,6 +73,21 @@ func _build_visual() -> void:
 		"saw":
 			_build_saw()
 			return
+		"net":
+			_build_net()
+			return
+		"boulder":
+			_build_boulder()
+			return
+		"mortar", "skipper":
+			col = Color(0.9, 0.5, 0.15) if kind == "mortar" else Color(0.95, 0.75, 0.2)
+			size = Vector3(0.34, 0.34, 0.34)
+		"tar_pot":
+			col = Color(0.6, 0.25, 0.05)
+			size = Vector3(0.5, 0.6, 0.5)
+		"shard":
+			col = Color(1.0, 0.7, 0.35)
+			size = Vector3(0.1, 0.1, 0.35)
 	var m := StandardMaterial3D.new()
 	m.albedo_color = col
 	m.emission_enabled = true
@@ -110,6 +128,8 @@ func _physics_process(delta: float) -> void:
 		return
 	if _disc != null:
 		_disc.rotate_y(delta * 40.0)
+	if kind == "boulder" and _boulder != null:
+		_boulder.rotate_x(-delta * _run_speed / 0.8)
 	if homing_target != null and is_instance_valid(homing_target) and turn_rate > 0.0:
 		if homing_target.has_method("is_alive") and not homing_target.is_alive():
 			homing_target = null
@@ -132,15 +152,19 @@ func _physics_process(delta: float) -> void:
 	var q := PhysicsRayQueryParameters3D.create(from, to,
 		ArcadeVehicle.LAYER_WORLD | ArcadeVehicle.LAYER_VEHICLES | ArcadeVehicle.LAYER_PROPS, exclude)
 	var hit := get_world_3d().direct_space_state.intersect_ray(q)
+	if hit.is_empty() and data.has("hit_radius"):
+		hit = _near_hit(to, float(data["hit_radius"]))
 	if not hit.is_empty():
-		if kind == "saw" and _saw_contact(hit):
+		if (kind == "saw" or kind == "boulder") and _saw_contact(hit):
 			_update_chain()
+			return
+		if kind == "skipper" and _skip(hit):
 			return
 		_finish(hit["position"], hit["normal"], hit["collider"])
 		return
 	global_position = to
 	if velocity.length_squared() > 0.01:
-		var flat := kind == "saw"
+		var flat := kind == "saw" or kind == "boulder"
 		var look := Vector3(velocity.x, 0.0, velocity.z) if flat else velocity
 		if look.length_squared() > 0.01:
 			look_at(to + look, Vector3.UP if absf(look.normalized().y) < 0.99 else Vector3.FORWARD)
@@ -159,7 +183,7 @@ func _saw_contact(hit: Dictionary) -> bool:
 		# Ground or a ramp: follow the surface at blade height.
 		var along := velocity - n * velocity.dot(n)
 		velocity = along.normalized() * _run_speed if along.length() > 0.1 else velocity
-		global_position = at + n * 0.45
+		global_position = at + n * (0.8 if kind == "boulder" else 0.45)
 		return true
 	if bounces_left <= 0:
 		return false
@@ -171,6 +195,57 @@ func _saw_contact(hit: Dictionary) -> bool:
 	Effects.sparks(get_parent(), at, n)
 	GameAudio.play_at("impact", at, 0.7, 1.6)
 	return true
+
+
+## Chunky shots (boulders, shrapnel) hit a car that comes within `radius` of
+## them, not only one the centre line touches.
+func _near_hit(at: Vector3, radius: float) -> Dictionary:
+	for node in get_tree().get_nodes_in_group("targets"):
+		if node == owner_vehicle or not (node is ArcadeVehicle) or not (node as ArcadeVehicle).is_alive():
+			continue
+		var c := (node as Node3D).global_position
+		if Vector3(c.x - at.x, (c.y - at.y) * 0.5, c.z - at.z).length() <= radius:
+			return {"position": at, "normal": (at - c).normalized(), "collider": node}
+	return {}
+
+
+## Skipper: bounces off floors and walls (not cars) until it runs out of bounces.
+func _skip(hit: Dictionary) -> bool:
+	var collider: Object = hit["collider"]
+	if collider is ArcadeVehicle or (collider != null and collider.has_method("take_damage")):
+		return false
+	if bounces_left <= 0:
+		return false
+	bounces_left -= 1
+	var n: Vector3 = hit["normal"]
+	velocity = velocity.bounce(n) * 0.85
+	if n.y > 0.5:
+		velocity.y = maxf(velocity.y, 7.0)   # a lively hop off the ground
+	global_position = (hit["position"] as Vector3) + n * 0.3
+	Effects.sparks(get_parent(), hit["position"], n)
+	GameAudio.play_at("impact", hit["position"], 0.6, 1.9)
+	return true
+
+
+## Damage and a shove to everything within `radius` of `at`, falling off with
+## distance (a direct hit is dealt separately). Used by blasts that splash.
+static func splash(world: Node, at: Vector3, radius: float, damage: float, impulse: float, src: Node, skip: Object = null) -> void:
+	if world == null or not world.is_inside_tree():
+		return
+	for node in world.get_tree().get_nodes_in_group("targets"):
+		if node == skip or not (node is Node3D):
+			continue
+		var to: Vector3 = (node as Node3D).global_position - at
+		var d := to.length()
+		if d > radius:
+			continue
+		var f := 1.0 - d / radius
+		if node.has_method("take_damage"):
+			node.take_damage(damage * (0.35 + 0.65 * f), src)
+		if impulse > 0.0 and node is ArcadeVehicle and (node as ArcadeVehicle).is_alive():
+			var flat := Vector3(to.x, 0.0, to.z)
+			var push := (flat.normalized() if flat.length() > 0.1 else Vector3.FORWARD) + Vector3.UP * 0.5
+			(node as ArcadeVehicle).apply_central_impulse(push.normalized() * impulse * f)
 
 
 func _update_chain() -> void:
@@ -211,6 +286,32 @@ func _build_hook() -> void:
 	_update_chain()
 
 
+## Spike Net: a square of chain with spikes at the corners, spinning flat.
+func _build_net() -> void:
+	_disc = Node3D.new()
+	add_child(_disc)
+	var steel := VehicleVisualParts.material("steel")
+	for i in 4:
+		var off := -0.6 + 0.4 * i
+		VehicleVisualParts.box(_disc, Vector3(1.4, 0.04, 0.04), Vector3(0, 0, off), steel)
+		VehicleVisualParts.box(_disc, Vector3(0.04, 0.04, 1.4), Vector3(off, 0, 0), steel)
+	for c in [Vector3(-0.7, 0, -0.7), Vector3(0.7, 0, -0.7), Vector3(-0.7, 0, 0.7), Vector3(0.7, 0, 0.7)]:
+		VehicleVisualParts.box(_disc, Vector3(0.16, 0.16, 0.16), c, VehicleVisualParts.material("blade"))
+
+
+## Rockslide: a lump of slag, still glowing in the cracks.
+func _build_boulder() -> void:
+	_boulder = MeshInstance3D.new()
+	var sphere := SphereMesh.new()
+	sphere.radius = 0.8
+	sphere.height = 1.5
+	sphere.radial_segments = 8
+	sphere.rings = 5
+	sphere.material = VehicleVisualParts.material("slag")
+	_boulder.mesh = sphere
+	add_child(_boulder)
+
+
 func _build_saw() -> void:
 	_disc = Node3D.new()
 	add_child(_disc)
@@ -241,6 +342,15 @@ func _build_saw() -> void:
 	sparks.color_ramp = Effects._ramp([Color(1, 0.9, 0.5, 1), Color(1, 0.5, 0.1, 0.8), Color(0.6, 0.2, 0.05, 0)])
 	add_child(sparks)
 	sparks.emitting = true
+
+
+func _spill_fire(world: Node, at: Vector3, src: Node) -> void:
+	var pool := FirePool.new()
+	pool.setup(src, data)
+	world.add_child(pool)
+	var q := PhysicsRayQueryParameters3D.create(at + Vector3.UP * 0.5, at - Vector3.UP * 6.0, ArcadeVehicle.LAYER_WORLD)
+	var ground := get_world_3d().direct_space_state.intersect_ray(q)
+	pool.global_position = ground["position"] if not ground.is_empty() else at
 
 
 func _finish(at: Vector3, normal: Vector3, collider: Object) -> void:
@@ -278,6 +388,34 @@ func _finish(at: Vector3, normal: Vector3, collider: Object) -> void:
 				to_me.y = 0.0
 				var pull := float(data.get("pull_impulse", 11000.0))
 				v.apply_central_impulse(to_me.normalized() * pull + Vector3.UP * pull * 0.12)
+		"net":
+			Effects.sparks(world, at, normal)
+			GameAudio.play_at("hook", at, 0.8, 0.8)
+			if collider != null and collider.has_method("take_damage"):
+				collider.take_damage(float(data.get("damage", 6.0)), src)
+			if collider is ArcadeVehicle:
+				(collider as ArcadeVehicle).status.snare(float(data.get("snare_s", 2.0)), float(data.get("snare_speed_scale", 0.3)))
+		"boulder":
+			Effects.shockwave(world, at, 3.0)
+			GameAudio.play_at("slam", at, 0.7, 1.3)
+			if collider != null and collider.has_method("take_damage"):
+				collider.take_damage(float(data.get("damage", 16.0)), src)
+			if collider is ArcadeVehicle:
+				var push := (Vector3(velocity.x, 0.0, velocity.z).normalized() + Vector3.UP * 0.5).normalized()
+				(collider as ArcadeVehicle).apply_central_impulse(push * float(data.get("impulse", 9000.0)))
+		"shard":
+			Effects.sparks(world, at, normal)
+			if collider != null and collider.has_method("take_damage"):
+				collider.take_damage(float(data.get("damage", 7.0)), src)
+		"mortar", "skipper", "tar_pot":
+			Effects.explosion(world, at, 0.55 if kind != "tar_pot" else 0.45)
+			GameAudio.play_at("explosion", at, 0.7, 1.25)
+			if collider != null and collider.has_method("take_damage"):
+				collider.take_damage(float(data.get("damage", 10.0)), src)
+			if data.has("splash_radius"):
+				splash(world, at, float(data["splash_radius"]), float(data.get("splash_damage", 8.0)), float(data.get("impulse", 4000.0)), src, collider)
+			if kind == "tar_pot":
+				_spill_fire(world, at, src)
 		"saw":
 			Effects.sparks(world, at, normal)
 			Effects.sparks(world, at, Vector3.UP)

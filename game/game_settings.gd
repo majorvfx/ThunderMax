@@ -28,7 +28,8 @@ static func load_settings() -> void:
 		quality = "low"
 	var cfg := ConfigFile.new()
 	if cfg.load(PATH) != OK:
-		return
+		if not migrate_from_thunder_max() or cfg.load(PATH) != OK:
+			return
 	fps_mode = str(cfg.get_value("display", "fps_mode", fps_mode))
 	quality = str(cfg.get_value("display", "quality", quality))
 	control_preset = str(cfg.get_value("controls", "preset", control_preset))
@@ -46,6 +47,27 @@ static func load_settings() -> void:
 	if not QUALITIES.has(quality):
 		quality = "medium"
 	control_preset = InputSetup.resolve_preset(control_preset)
+
+
+## Iron Carnage used to be called Thunder Max: Metal Road and saved under that
+## name. The first time Iron Carnage runs, it copies the old settings (controls,
+## remaps, car) and saved handling tuning across. Returns true if it found them.
+static func migrate_from_thunder_max() -> bool:
+	var base := OS.get_data_dir().path_join("Godot").path_join("app_userdata")
+	for old_name in ["Thunder Max_ Metal Road", "Thunder Max: Metal Road", "Thunder Max"]:
+		var old_dir: String = base.path_join(old_name)
+		var old_cfg := old_dir.path_join("settings.cfg")
+		if not FileAccess.file_exists(old_cfg):
+			continue
+		DirAccess.copy_absolute(old_cfg, ProjectSettings.globalize_path(PATH))
+		var old_tuning := old_dir.path_join("tuning")
+		var d := DirAccess.open(old_tuning)
+		if d != null:
+			DirAccess.make_dir_recursive_absolute(GameData.TUNING_DIR)
+			for f in d.get_files():
+				DirAccess.copy_absolute(old_tuning.path_join(f), ProjectSettings.globalize_path(GameData.TUNING_DIR + f))
+		return true
+	return false
 
 
 static func save_settings() -> void:

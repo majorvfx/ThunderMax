@@ -114,6 +114,8 @@ func _build() -> void:
 	view_box.add_child(vp)
 	_build_stage(vp)
 	_dots = UiStyle.label("", 22, Color(0.92, 0.86, 0.76))
+	_dots.clip_text = true
+	_dots.custom_minimum_size = Vector2(100, 0)
 	_dots.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	left.add_child(_dots)
 
@@ -213,10 +215,12 @@ func _show(i: int) -> void:
 	var sig := GameData.signature(s.id)
 	_special_name.text = str(sig.get("name", "None")).to_upper()
 	_special_desc.text = "%s  Recharges in %d s." % [str(sig.get("description", "")), int(sig.get("recharge_s", 0))] if not sig.is_empty() else ""
+	# The two cars either side of this one, so a long roster still fits.
 	var dots := []
-	for k in cars.size():
-		dots.append("[%s]" % _stats[k].display_name if k == index else _stats[k].display_name)
-	_dots.text = "<   " + "    ".join(dots) + "   >"
+	for off in range(-2, 3):
+		var k := (index + off + cars.size()) % cars.size()
+		dots.append("[%s]" % _stats[k].display_name if off == 0 else _stats[k].display_name)
+	_dots.text = "%d / %d     <   %s   >" % [index + 1, cars.size(), "    ".join(dots)]
 	# Swap the preview model.
 	for c in _pivot.get_children():
 		c.queue_free()

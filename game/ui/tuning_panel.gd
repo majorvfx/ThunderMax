@@ -30,16 +30,19 @@ func _ready() -> void:
 	var buttons := HBoxContainer.new()
 	col.add_child(buttons)
 	var save := UiStyle.button("Save", _save)
-	save.custom_minimum_size = Vector2(110, 0)
+	save.custom_minimum_size = Vector2(100, 0)
 	buttons.add_child(save)
 	var copy := UiStyle.button("Copy", _copy)
-	copy.custom_minimum_size = Vector2(110, 0)
+	copy.custom_minimum_size = Vector2(100, 0)
 	buttons.add_child(copy)
 	var reset := UiStyle.button("Reset", _reset)
-	reset.custom_minimum_size = Vector2(110, 0)
+	reset.custom_minimum_size = Vector2(100, 0)
 	buttons.add_child(reset)
+	var grip := UiStyle.button("Grip", _grip)
+	grip.custom_minimum_size = Vector2(100, 0)
+	buttons.add_child(grip)
 	var close := UiStyle.button("Close", close_panel)
-	close.custom_minimum_size = Vector2(110, 0)
+	close.custom_minimum_size = Vector2(100, 0)
 	buttons.add_child(close)
 	_first = save
 	_status = UiStyle.label("", 15, Color(0.7, 0.66, 0.6))
@@ -126,6 +129,14 @@ func _save() -> void:
 func _copy() -> void:
 	DisplayServer.clipboard_set(JSON.stringify(vehicle.stats.to_tuning_dict(), "  "))
 	_status.text = "Copied the numbers to the clipboard."
+
+
+## Grip preset: brakes harder off the throttle, slides less, straightens faster.
+## Reset puts the car's own numbers back.
+func _grip() -> void:
+	vehicle.stats.apply_grip_preset()
+	_build_rows()
+	_status.text = "Grip preset on %s: stops quicker, slides less. Save to keep it, Reset to undo." % vehicle.stats.display_name
 
 
 func _reset() -> void:

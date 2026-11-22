@@ -1,6 +1,6 @@
 class_name ArcadeVehicle
 extends RigidBody3D
-## Godot layer for a Thunder Max vehicle.
+## Godot layer for a Iron Carnage vehicle.
 ##
 ## Raycast suspension holds the body up; ArcadeHandling (engine-agnostic) decides
 ## forward speed, slide and yaw; this script converts between world space and car
@@ -110,6 +110,8 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	if driver != null:
 		frame = driver.get_frame(self, dt)
 	var drive_frame := frame.idle() if status.is_frozen() else frame
+	if status.is_jammed() and drive_frame.turbo:
+		drive_frame = _without_turbo(drive_frame)
 
 	_impact_cooldown = maxf(0.0, _impact_cooldown - dt)
 	_detect_impacts(state, up)
@@ -132,6 +134,11 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	drive.vertical = v.y
 
 	ArcadeHandling.step(stats, drive, drive_frame, grounded, dt)
+	if status.is_snared():
+		# Spike Net: the tangled wheels can't turn fast, so speed bleeds down hard.
+		var cap := stats.max_speed * status.snare_speed_scale
+		if drive.speed > cap:
+			drive.speed = move_toward(drive.speed, cap, 40.0 * dt)
 
 	if grounded:
 		v = fwd * drive.speed + right * drive.lateral + n * along_normal
@@ -155,6 +162,22 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 
 	_last_out_velocity = state.linear_velocity
 	_has_last = true
+
+
+func _without_turbo(f: ArcadeHandling.ControlFrame) -> ArcadeHandling.ControlFrame:
+	var c := ArcadeHandling.ControlFrame.new()
+	c.throttle = f.throttle
+	c.brake = f.brake
+	c.steer = f.steer
+	c.steer_digital = f.steer_digital
+	c.fire_gun = f.fire_gun
+	c.fire_special = f.fire_special
+	c.look_back = f.look_back
+	c.combo_presses = f.combo_presses
+	c.combo_hold = f.combo_hold
+	c.tight_turn = f.tight_turn
+	c.cycle_special = f.cycle_special
+	return c
 
 
 func _suspension(state: PhysicsDirectBodyState3D, xf: Transform3D, up: Vector3) -> void:

@@ -1,5 +1,5 @@
 {
-  "_note": "Design targets for Thunder Max handling, measured by tests/run_tests.gd on a flat test pad. These are our own targets for an arcade feel, not values taken from any other game.",
+  "_note": "Design targets for Iron Carnage handling, measured by tests/run_tests.gd on a flat test pad. These are our own targets for an arcade feel, not values taken from any other game.",
   "rustjaw": {
     "time_to_90pct_top_speed_s": [1.3, 2.6],
     "top_speed_ms": [28.5, 31.5],

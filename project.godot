@@ -1,12 +1,14 @@
 ; Engine configuration file.
-; Thunder Max: Metal Road. Open this folder with Godot 4.7 or newer.
+; Iron Carnage. Open this folder with Godot 4.7 or newer.
 
 config_version=5
 
 [application]
 
-config/name="Thunder Max: Metal Road"
-config/description="Original vehicular-combat arena game. Milestone 1: first playable."
+config/name="Iron Carnage"
+config/description="Original vehicular-combat arena game."
+config/use_custom_user_dir=true
+config/custom_user_dir_name="Iron Carnage"
 config/version="0.1.0"
 run/main_scene="res://game/main.tscn"
 config/features=PackedStringArray("4.7", "Mobile")

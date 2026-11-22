@@ -1,5 +1,5 @@
 {
-  "_note": "Thunder Max combo moves. Inputs are D-pad sequences (combo_up/down/left/right actions, remappable). Each press must come within window_s of the last. Moves with \"hold\": true only fire while the combo hold control (RT by default) is held. Edit freely: names, inputs, costs and effects are all ours.",
+  "_note": "Iron Carnage combo moves. Inputs are D-pad sequences (combo_up/down/left/right actions, remappable). Each press must come within window_s of the last. Moves with \"hold\": true only fire while the combo hold control (RT by default) is held. Edit freely: names, inputs, costs and effects are all ours.",
   "window_s": 0.45,
   "energy_max": 100,
   "energy_regen": 6.0,

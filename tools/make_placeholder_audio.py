@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generates Thunder Max's placeholder sounds and music loop as 16-bit mono WAV files.
+"""Generates Iron Carnage's placeholder sounds and music loop as 16-bit mono WAV files.
 
 Everything here is synthesized from scratch (noise, oscillators, envelopes), so the
 placeholders are original and free to use. Replace any file in assets/audio with

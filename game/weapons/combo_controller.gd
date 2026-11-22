@@ -1,6 +1,6 @@
 class_name ComboController
 extends Node
-## Turns D-pad combo presses into Thunder Max's combo moves (data/combos.json):
+## Turns D-pad combo presses into Iron Carnage's combo moves (data/combos.json):
 ## Scrap Mine, Cold Snap, Spring Jack, Rivet Storm, Fire Jug, Tailgunner, Blackout
 ## and Bulwark. Moves cost combo energy, which refills on its own. Bots call
 ## request_move() directly.

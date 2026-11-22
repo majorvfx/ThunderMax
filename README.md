@@ -1,12 +1,15 @@
-# Thunder Max: Metal Road
+# Iron Carnage
 
-An original vehicular-combat arena game: dark, serious, with a little dark humor.
+An original vehicular-combat arena game in a dying industrial wasteland: soot, rust, smog and
+sodium light. The Carnage Authority holds the last fuel in the Rust Belt; whoever survives Iron
+Carnage wins a lifetime ration and a pass through the wall.
 Built in Godot 4, structured so the game rules and data can move to Unreal later.
 
-This build is **Milestone 1 (first playable)** plus most of **Milestone 2 (core combat)**: four
-cars with their own specials, one arena, the machine gun, D-pad combo moves with an energy
-meter, pickup special weapons, drones that fight back, Xbox controller support, and the arcade
-handling model with a live tuning panel. All art and audio are placeholders made in code.
+This project used to be called **Thunder Max: Metal Road**. This build is **Iron Carnage update 1**:
+the game renamed, the gritty look back (the Neon Wasteland pass is gone), **twelve cars** each
+with its own special, seven pickup weapons, D-pad combo moves with an energy meter, drones that
+fight back, Xbox controller support, and the arcade handling model with a live tuning panel and
+a new **Grip** preset. All art and audio are placeholders made in code.
 
 ![Title](docs/screenshots/title.png)
 
@@ -16,9 +19,14 @@ handling model with a live tuning panel. All art and audio are placeholders made
 2. Open Godot, choose **Import**, and select this folder's `project.godot`.
 3. Plug in your Xbox controller (USB or Bluetooth), then press **F5** (or the Play button).
 
-To skip the editor, run the game directly:
-`Godot_v4.7.2-stable_win64.exe --path "C:\path\to\ThunderMax"` (a `.bat` file with that line
-works as a desktop shortcut).
+To skip the editor, double-click **`Play_Iron_Carnage.bat`** in this folder. It looks for
+Godot 4.7 in the usual places; if yours is somewhere else, open the `.bat` in Notepad and put
+its path on the `set GODOT=` line. Right-click it and choose **Send to > Desktop** for a
+shortcut.
+
+Settings (controls, remaps, your car) and saved handling tuning live in
+`%APPDATA%\Iron Carnage`. The first time Iron Carnage runs it copies them over from Thunder Max,
+so your remaps carry across.
 
 Press **A** or **Enter** on the title screen, pick a car (left / right, then **A**), and you
 start in the Foundry Yard with three Scrap Drones running laps. Get close and they turn on you.
@@ -35,6 +43,14 @@ next time; **Change car** in the pause menu goes back to the select screen.
 | **Cinder**: a stripped dune buggy, all roll cage and fuel cell | Light | 70 | 34 m/s | **Ember Fan**: five little rockets in a fan; each one sets a brief fire |
 | **Hogshead**: a fuel tanker poured full of concrete | Heavy | 150 | 25 m/s | **Dead Weight**: drops the tank on its jacks; cars within 12 m are hurt and thrown clear |
 | **Sawback**: a street sweeper with blades where the brushes were | Medium | 110 | 28 m/s | **Ripsaw**: a spinning blade that runs along the ground and bounces off walls three times |
+| **Warrant**: a repo agency's armoured interceptor, light bar shot out | Medium | 90 | 31 m/s | **Spike Net**: a chain net that snags the target's wheels; its top speed drops to under a third for 2 s |
+| **Bastion**: a six-wheel surplus troop carrier with a mortar tube | Heavy | 160 | 23 m/s | **Mortar Spread**: lobs five small charges in a fan over the bonnet; each bursts where it lands |
+| **Mourner**: a rusted hearse with plate over the side glass | Medium | 80 | 30 m/s | **Pall**: kicks a casket out the back that bursts into black smoke; anyone inside burns and rockets lose their lock |
+| **Bucketmouth**: a wheel loader with a toothed bucket | Heavy | 150 | 22 m/s | **Scoop and Hurl**: scoops the car right in front and flings it back over the cab |
+| **Tonnage**: a monster truck on a mine dump-truck frame | Heavy | 140 | 24 m/s | **Rockslide**: tips the bed; four slag boulders roll out behind and flatten what they hit |
+| **Vandal**: a supercharged muscle car, zip-tied together | Medium | 85 | 32 m/s | **Shrapnel Ring**: scrap blown out in every direction at once, front, back and sides |
+| **Lancet**: a stripped open-wheel racer with a jet bolted on | Light | 60 | 36 m/s | **Ghost Run**: 4 s off radar and immune to lock-on, turbo topped up; firing ends it |
+| **Sermon**: a street preacher's lowrider with PA horns | Medium | 90 | 29 m/s | **Hydraulic Hop**: leaps over incoming shots and slams down, hurting and shoving cars around the landing |
 
 Each car's own special sits in the special weapon list alongside the pickups, holds one shot and
 recharges on its own (12 to 16 seconds; the thin bar under the special panel). It's selected
@@ -51,6 +67,16 @@ order in `data/roster.json`, so new cars are mostly data.
 | ![Slag Hook](docs/screenshots/sig_slag_hook.png) | ![Ember Fan](docs/screenshots/sig_ember_fan.png) |
 | **Dead Weight** | **Ripsaw** |
 | ![Dead Weight](docs/screenshots/sig_dead_weight.png) | ![Ripsaw](docs/screenshots/sig_ripsaw.png) |
+| **Spike Net** | **Mortar Spread** |
+| ![Spike Net](docs/screenshots/sig_spike_net.png) | ![Mortar Spread](docs/screenshots/sig_mortar_spread.png) |
+| **Pall** | **Scoop and Hurl** |
+| ![Pall](docs/screenshots/sig_pall.png) | ![Scoop and Hurl](docs/screenshots/sig_scoop_and_hurl.png) |
+| **Rockslide** | **Shrapnel Ring** |
+| ![Rockslide](docs/screenshots/sig_rockslide.png) | ![Shrapnel Ring](docs/screenshots/sig_shrapnel_ring.png) |
+| **Ghost Run** | **Hydraulic Hop** |
+| ![Ghost Run](docs/screenshots/sig_ghost_run.png) | ![Hydraulic Hop](docs/screenshots/sig_hydraulic_hop.png) |
+
+The select screen shows five names at a time with your place in the roster (`6 / 12`).
 
 ## Controls
 
@@ -157,6 +183,10 @@ with previous / next special, and fire with the special button.
 | Seeker | Homing missile; follows your lock-on target. |
 | Firebrand | Fast incendiary round; sets the target alight. Bends slightly toward a target ahead. |
 | Sledge | Slow, heavy rocket that fires straight and shoves what it hits. |
+| Satchel | Canvas bag of blasting charge. Tap to lay up to three behind you; press again a second or more later to set them all off. Left alone, they blow after 8 s. |
+| Tar Pot | Lobbed canister that bursts into a wide pool of burning tar. |
+| Skipper | Bomb that bounces off floors and walls up to three times, then blows; it blows at once if it hits a car. |
+| Arc Coil | A bolt of current to the car ahead that jumps on to the car nearest it. Both lose their turbo for 2 s. With nobody ahead it doesn't fire. |
 
 Their numbers live in `data/specials.json`.
 
@@ -177,7 +207,23 @@ to the right stick.
 
 ![Remap controls](docs/screenshots/remap_controls.png)
 
-## What's in Milestone 2 so far
+## What's new in Iron Carnage update 1
+
+- **Renamed** to Iron Carnage everywhere: window, title screen, save folder, shortcut.
+- **The gritty look is back.** The Neon Wasteland pass is gone; the Foundry Yard is soot, rust and
+  sodium lamps again. The title screen is a stencilled steel plate between strips of hazard
+  tape, and menus are steel plates with a hazard-amber lip.
+- **Eight new cars**: Warrant, Bastion, Mourner, Bucketmouth, Tonnage, Vandal, Lancet and Sermon,
+  each with its own special (see **Cars**). The select screen and HUD handle the bigger roster.
+- **Four new pickup weapons** in weapon crates: Satchel, Tar Pot, Skipper and Arc Coil.
+- **New status effects**: SNARED (Spike Net) and TURBO DEAD (Arc Coil), shown on the HUD.
+- **Grip handling preset**: in the tuning panel, **Grip** makes the car stop quicker off the
+  throttle, slide less and straighten faster. **Save** keeps it; **Reset** undoes it.
+
+Next up (update 2): the Refinery Row arena, the Gauntlet campaign with Scrap / Iron / Carnage
+difficulties, The Assessor boss, a tally screen and bot difficulty levels.
+
+## What's in Milestone 2
 
 - **Four cars**, each with its own recharging special, and a car select screen (see **Cars**).
 - **Eight combo moves** on the D-pad with an energy meter, including a held long code (see above).
@@ -191,9 +237,6 @@ to the right stick.
 - **Scrap Drones fight back**: they hunt you when you're close, fire their guns in bursts,
   drop mines or fire a Tailgunner round when you chase them, raise Bulwark when hurt, and throw
   Cold Snaps. They lose you while you're under Blackout.
-
-Still to come in Milestone 2: a second arena with destructible scenery, and bot difficulty
-levels.
 
 ![Cold Snap](docs/screenshots/cold_snap.png)
 

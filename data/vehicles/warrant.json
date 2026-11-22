@@ -1,0 +1,83 @@
+{
+  "id": "warrant",
+  "name": "Warrant",
+  "class": "medium",
+  "paint": "warrant",
+  "description": "A repo agency's armoured interceptor. The light bar was shot out years ago; the push bar never was.",
+  "health": {
+    "max_health": 90
+  },
+  "drive": {
+    "max_speed": 31.0,
+    "accel": 21.0,
+    "accel_falloff": 0.5,
+    "brake_decel": 45.0,
+    "reverse_max_speed": 11.0,
+    "reverse_accel": 14.0,
+    "coast_decel": 7.0
+  },
+  "steering": {
+    "turn_rate_deg": 165.0,
+    "high_speed_turn_scale": 0.75,
+    "pivot_turn": 0.3,
+    "full_turn_speed": 4.0,
+    "steer_ramp_time": 0.16,
+    "steer_return_time": 0.08,
+    "analog_steer_curve": 1.4,
+    "yaw_response": 14.0
+  },
+  "grip": {
+    "grip": 10.0,
+    "drift_grip": 2.2,
+    "drift_min_speed": 12.0,
+    "drift_turn_boost": 1.35,
+    "drift_brake_scale": 0.25,
+    "tight_turn_boost": 1.7,
+    "tight_turn_drag": 5.0
+  },
+  "body": {
+    "mass": 1350.0,
+    "body_width": 1.9,
+    "body_height": 0.7,
+    "body_length": 4.6,
+    "wheel_track": 0.85,
+    "wheel_base": 1.4,
+    "gravity_scale": 1.6,
+    "air_control": 0.3,
+    "air_upright": 3.0,
+    "upright_strength": 8.0,
+    "ride_height": 0.6,
+    "suspension_hz": 2.2,
+    "suspension_damping": 0.55
+  },
+  "combat": {
+    "ram_power": 1.2,
+    "ram_armor": 1.0
+  },
+  "turbo": {
+    "turbo_capacity": 100.0,
+    "turbo_drain": 35.0,
+    "turbo_regen": 4.0,
+    "turbo_speed_mult": 1.4,
+    "turbo_thrust": 18.0,
+    "turbo_kick": 4.0,
+    "turbo_kick_cost": 6.0,
+    "turbo_air_thrust": 16.0,
+    "turbo_air_lift": 7.0
+  },
+  "signature": {
+    "id": "spike_net",
+    "name": "Spike Net",
+    "kind": "net",
+    "description": "A weighted chain net studded with spikes. Snags the target's wheels and drags its top speed right down for two seconds.",
+    "damage": 6.0,
+    "speed": 58.0,
+    "life_s": 1.2,
+    "snare_s": 2.0,
+    "snare_speed_scale": 0.3,
+    "curve_deg_per_s": 16.0,
+    "view_cone_deg": 25.0,
+    "recharge_s": 13.0,
+    "cooldown": 0.6
+  }
+}

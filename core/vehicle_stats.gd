@@ -156,3 +156,24 @@ func _property_names() -> Dictionary:
 		if p["usage"] & PROPERTY_USAGE_SCRIPT_VARIABLE:
 			names[p["name"]] = true
 	return names
+
+
+## The "Grip" handling preset from the tuning panel: the car sheds speed fast when
+## you let off, slides less and snaps straight sooner, for a tighter old-school
+## arcade feel. Each value is scaled from the car's own numbers and kept inside
+## the tuning ranges.
+const GRIP_PRESET := {
+	"coast_decel": 2.2,
+	"brake_decel": 1.15,
+	"grip": 1.25,
+	"drift_grip": 1.6,
+	"steer_return_time": 0.6,
+	"yaw_response": 1.2,
+}
+
+
+func apply_grip_preset() -> void:
+	for entry in TUNABLE:
+		var key: String = entry[0]
+		if GRIP_PRESET.has(key):
+			set(key, clampf(float(get(key)) * float(GRIP_PRESET[key]), entry[1], entry[2]))

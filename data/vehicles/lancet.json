@@ -1,0 +1,78 @@
+{
+  "id": "lancet",
+  "name": "Lancet",
+  "class": "light",
+  "paint": "lancet",
+  "description": "A stripped open-wheel racer with a jet engine bolted behind the seat. Fast, thin, and gone.",
+  "health": {
+    "max_health": 60
+  },
+  "drive": {
+    "max_speed": 36.0,
+    "accel": 24.0,
+    "accel_falloff": 0.5,
+    "brake_decel": 48.0,
+    "reverse_max_speed": 12.0,
+    "reverse_accel": 16.0,
+    "coast_decel": 7.0
+  },
+  "steering": {
+    "turn_rate_deg": 175.0,
+    "high_speed_turn_scale": 0.72,
+    "pivot_turn": 0.35,
+    "full_turn_speed": 4.0,
+    "steer_ramp_time": 0.13,
+    "steer_return_time": 0.07,
+    "analog_steer_curve": 1.4,
+    "yaw_response": 16.0
+  },
+  "grip": {
+    "grip": 10.0,
+    "drift_grip": 2.0,
+    "drift_min_speed": 11.0,
+    "drift_turn_boost": 1.4,
+    "drift_brake_scale": 0.25,
+    "tight_turn_boost": 1.8,
+    "tight_turn_drag": 4.5
+  },
+  "body": {
+    "mass": 950.0,
+    "body_width": 1.7,
+    "body_height": 0.5,
+    "body_length": 4.2,
+    "wheel_track": 0.85,
+    "wheel_base": 1.35,
+    "gravity_scale": 1.6,
+    "air_control": 0.35,
+    "air_upright": 3.0,
+    "upright_strength": 8.0,
+    "ride_height": 0.55,
+    "suspension_hz": 2.4,
+    "suspension_damping": 0.5
+  },
+  "combat": {
+    "ram_power": 0.8,
+    "ram_armor": 0.8
+  },
+  "turbo": {
+    "turbo_capacity": 100.0,
+    "turbo_drain": 35.0,
+    "turbo_regen": 4.0,
+    "turbo_speed_mult": 1.4,
+    "turbo_thrust": 18.0,
+    "turbo_kick": 4.0,
+    "turbo_kick_cost": 6.0,
+    "turbo_air_thrust": 16.0,
+    "turbo_air_lift": 7.0
+  },
+  "signature": {
+    "id": "ghost_run",
+    "name": "Ghost Run",
+    "kind": "cloak",
+    "description": "Kills the lights and runs hot on the jet: four seconds off radar, nothing can lock on, and the turbo tops up. Firing ends it.",
+    "cloak_s": 4.0,
+    "turbo_refill": 35.0,
+    "recharge_s": 16.0,
+    "cooldown": 0.6
+  }
+}

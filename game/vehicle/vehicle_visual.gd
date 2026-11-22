@@ -33,12 +33,32 @@ const SHELL_SCALE := {
 	"cinder": Vector3(0.92, 1.05, 0.86),
 	"hogshead": Vector3(1.2, 1.5, 1.27),
 	"sawback": Vector3(1.05, 1.15, 1.04),
+	"warrant": Vector3(1.0, 1.0, 1.07),
+	"bastion": Vector3(1.25, 1.55, 1.3),
+	"mourner": Vector3(1.0, 1.1, 1.15),
+	"bucketmouth": Vector3(1.2, 1.5, 1.2),
+	"tonnage": Vector3(1.25, 1.6, 1.18),
+	"vandal": Vector3(1.0, 1.0, 1.05),
+	"lancet": Vector3(0.9, 0.8, 0.98),
+	"sermon": Vector3(1.0, 1.0, 1.12),
 }
+
+## Wheel size per body (1.0 = the standard 0.42 m wheel).
+const WHEEL_SCALE := {
+	"bastion": 1.25,
+	"bucketmouth": 1.5,
+	"tonnage": 1.9,
+	"lancet": 1.1,
+	"sermon": 0.85,
+}
+
+var wheel_scale := 1.0
 
 
 func build(v: ArcadeVehicle, paint_name: String) -> void:
 	vehicle = v
 	paint = paint_name
+	wheel_scale = float(WHEEL_SCALE.get(paint, 1.0))
 	match paint:
 		"drone":
 			_build_drone()
@@ -48,6 +68,8 @@ func build(v: ArcadeVehicle, paint_name: String) -> void:
 			_build_hogshead()
 		"sawback":
 			_build_sawback()
+		"warrant", "bastion", "mourner", "bucketmouth", "tonnage", "vandal", "lancet", "sermon":
+			RosterBodies.build(self, paint)
 		_:
 			_build_rustjaw()
 	_build_wheels()
@@ -60,6 +82,19 @@ func build(v: ArcadeVehicle, paint_name: String) -> void:
 		_build_flames()
 
 
+## Used by RosterBodies: rocket nozzles for the turbo flames, and parts that spin.
+func add_nozzle(pos: Vector3) -> void:
+	_nozzles.append(pos)
+
+
+func add_spinner(n: Node3D) -> void:
+	_spinners.append(n)
+
+
+func set_beacon(m: MeshInstance3D) -> void:
+	_beacon = m
+
+
 ## Fires the rockets briefly without using turbo (Spring Jack's kick-off).
 func flare(seconds: float) -> void:
 	_flare_time = maxf(_flare_time, seconds)
@@ -68,11 +103,11 @@ func flare(seconds: float) -> void:
 func _process(delta: float) -> void:
 	if vehicle == null:
 		return
-	_wheel_spin += vehicle.drive.speed / VehicleVisualParts.WHEEL_RADIUS * delta
+	_wheel_spin += vehicle.drive.speed / (VehicleVisualParts.WHEEL_RADIUS * wheel_scale) * delta
 	for i in _wheels.size():
 		var w := _wheels[i]
 		var off: Vector3 = vehicle.wheel_offsets[i]
-		var y := off.y - vehicle.wheel_distance[i] + VehicleVisualParts.WHEEL_RADIUS
+		var y := off.y - vehicle.wheel_distance[i] + VehicleVisualParts.WHEEL_RADIUS * wheel_scale
 		w.position = Vector3(off.x * 1.12, lerpf(w.position.y, y, 0.6), off.z)
 		var steer_angle := -vehicle.drive.steer * 0.45 if i < 2 else 0.0
 		w.rotation = Vector3(0.0, steer_angle, 0.0)
@@ -299,6 +334,7 @@ func _build_wheels() -> void:
 		pivot.add_child(spin)
 		VehicleVisualParts.cylinder(spin, VehicleVisualParts.WHEEL_RADIUS, 0.36, Vector3.ZERO, Vector3(0, 0, 90), tire)
 		VehicleVisualParts.box(spin, Vector3(0.38, 0.5, 0.12), Vector3.ZERO, steel)
+		spin.scale = Vector3(1.0 + (wheel_scale - 1.0) * 0.5, wheel_scale, wheel_scale)
 		pivot.position = vehicle.wheel_offsets[i]
 		_wheels.append(pivot)
 

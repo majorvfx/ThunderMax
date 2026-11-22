@@ -12,6 +12,9 @@ var burn_dps := 0.0
 var burn_source: Object = null
 var cloak_time := 0.0        ## Blackout: can't be locked on or tracked
 var overdrive_time := 0.0    ## Rivet Storm: faster, harder-hitting guns, no heat
+var snare_time := 0.0        ## Spike Net: wheels tangled, top speed cut hard
+var snare_speed_scale := 0.35
+var jam_time := 0.0          ## Arc Coil: turbo shorted out
 var _cooldowns := {}
 
 
@@ -30,6 +33,8 @@ func reset() -> void:
 	burn_source = null
 	cloak_time = 0.0
 	overdrive_time = 0.0
+	snare_time = 0.0
+	jam_time = 0.0
 	_cooldowns.clear()
 
 
@@ -53,6 +58,14 @@ func is_overdriven() -> bool:
 	return overdrive_time > 0.0
 
 
+func is_snared() -> bool:
+	return snare_time > 0.0
+
+
+func is_jammed() -> bool:
+	return jam_time > 0.0
+
+
 ## Advances timers. Returns burn damage dealt this step.
 func tick(dt: float) -> float:
 	energy = minf(energy_max, energy + energy_regen * dt)
@@ -60,6 +73,8 @@ func tick(dt: float) -> float:
 	frozen_time = maxf(0.0, frozen_time - dt)
 	cloak_time = maxf(0.0, cloak_time - dt)
 	overdrive_time = maxf(0.0, overdrive_time - dt)
+	snare_time = maxf(0.0, snare_time - dt)
+	jam_time = maxf(0.0, jam_time - dt)
 	for k in _cooldowns.keys():
 		_cooldowns[k] = maxf(0.0, _cooldowns[k] - dt)
 	if burn_time <= 0.0:
@@ -111,6 +126,21 @@ func cloak(seconds: float) -> void:
 ## Ends Blackout early (the car fired, so it gave itself away).
 func reveal() -> void:
 	cloak_time = 0.0
+
+
+## Spike Net: tangles the wheels, cutting top speed to `speed_scale` for a while.
+func snare(seconds: float, speed_scale: float = 0.35) -> void:
+	if is_shielded():
+		return
+	snare_time = maxf(snare_time, seconds)
+	snare_speed_scale = speed_scale
+
+
+## Arc Coil: shorts out the turbo for a while.
+func jam(seconds: float) -> void:
+	if is_shielded():
+		return
+	jam_time = maxf(jam_time, seconds)
 
 
 func overdrive(seconds: float) -> void:
