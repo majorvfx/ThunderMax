@@ -95,7 +95,7 @@ func _ready() -> void:
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(_status)
 
-	var build := UiStyle.label("Update 1 build  -  placeholder art and audio", 14, Color(0.45, 0.4, 0.36))
+	var build := UiStyle.label("Update 2 build  -  placeholder art and audio", 14, Color(0.45, 0.4, 0.36))
 	build.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	build.position = Vector2(16, -48)
 	add_child(build)
