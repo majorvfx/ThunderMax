@@ -48,6 +48,7 @@ func _run() -> void:
 	await _signature_specials()
 	await _new_car_specials()
 	await _new_pickup_weapons()
+	await _projectile_tuning()
 	await _car_select()
 	print("== Arena smoke test ==")
 	await _arena_smoke()
@@ -1410,6 +1411,54 @@ func _arena_smoke() -> void:
 	await _frames(5)
 
 
+# --- Projectile tuning: bigger hitboxes, higher fire-bomb arcs -------------------------
+
+func _projectile_tuning() -> void:
+	check(is_equal_approx(Projectile.HITBOX_SCALE, 1.15), "projectile hitboxes are 15% bigger")
+	# Lob arcs: Fire Jug 25 degrees (was 20), Tar Pot 29 (was 24).
+	var jug: Dictionary = GameData.load_json(GameData.COMBOS_PATH)["moves"]["fire_jug"]
+	var tar: Dictionary = GameData.load_json(GameData.SPECIALS_PATH)["weapons"]["tar_pot"]
+	var jv := Projectile.lob_velocity(Vector3.FORWARD, float(jug["speed"]), float(jug["arc_deg"]))
+	var tv := Projectile.lob_velocity(Vector3.FORWARD, float(tar["speed"]), float(tar["arc_deg"]))
+	var old_jug := rad_to_deg(atan2(8.0, 22.0))
+	var old_tar := rad_to_deg(atan2(8.0, 18.0))
+	near(rad_to_deg(atan2(jv.y, Vector3(jv.x, 0, jv.z).length())), old_jug + 5.0, 0.2, "Fire Jug is thrown 5 degrees higher")
+	near(rad_to_deg(atan2(tv.y, Vector3(tv.x, 0, tv.z).length())), old_tar + 5.0, 0.2, "Tar Pot is lobbed 5 degrees higher")
+	near(jv.length(), Vector2(22.0, 8.0).length(), 0.1, "Fire Jug leaves at the same speed as before")
+	near(tv.length(), Vector2(18.0, 8.0).length(), 0.1, "Tar Pot leaves at the same speed as before")
+
+	# A rocket that passes just wide of a car (inside the extra 15%, outside the body) hits it.
+	var r := await _sig_range("rustjaw", Vector3.ZERO)
+	var world: Node3D = r[0]
+	var shooter: ArcadeVehicle = r[1]
+	var car := VehicleFactory.create("rustjaw", ScriptedDriver.new(), false, false)
+	world.add_child(car)
+	car.global_transform = Transform3D(Basis.IDENTITY, Vector3(20, 1.2, -30))
+	car.reset_physics_interpolation()
+	await _frames(45)
+	var half_w := car.stats.body_width * 0.5
+	var c := car.global_transform * Projectile.BODY_OFFSET
+	var graze_x := c.x - half_w * 1.07   # 7% outside the body, inside the 15% margin
+	check(Projectile.in_hitbox(car, Vector3(graze_x, c.y, c.z)), "a point just outside the body is inside the hitbox")
+	check(not Projectile.in_hitbox(car, Vector3(c.x - half_w * 1.25, c.y, c.z)), "a point well outside isn't")
+	var hp := car.health.current
+	var shot := Projectile.new()
+	shot.setup("sledge", shooter, {"damage": 20.0, "speed": 70.0, "life_s": 3.0})
+	world.add_child(shot)
+	shot.launch(Vector3(graze_x, c.y, c.z + 30.0), Vector3(0, 0, -70.0))
+	await _frames(40)
+	check(car.health.current < hp, "a fast shot grazing within the margin hits (%.0f -> %.0f)" % [hp, car.health.current])
+	hp = car.health.current
+	var miss := Projectile.new()
+	miss.setup("sledge", shooter, {"damage": 20.0, "speed": 70.0, "life_s": 3.0})
+	world.add_child(miss)
+	miss.launch(Vector3(c.x - half_w * 1.4, c.y, c.z + 30.0), Vector3(0, 0, -70.0))
+	await _frames(40)
+	check(car.health.current == hp, "a shot well wide still misses")
+	world.queue_free()
+	await _frames(2)
+
+
 func _write_report() -> void:
 	var targets: Dictionary = GameData.load_json("res://data/handling_targets.json")["rustjaw"]
 	var lines: Array[String] = []
@@ -1435,18 +1484,63 @@ func _write_report() -> void:
 # --- Iron Carnage update 1: the eight new cars and four new pickups ---------------------
 
 func _new_car_specials() -> void:
-	# Spike Net: hurts and snares the car ahead, which then can't reach full speed.
-	var r := await _sig_range("warrant", Vector3(0, 1.2, -22))
+	# Taser Pulse: a ring of current that hits up to four cars nearby, throws them
+	# up and spins them. A fifth car in range, and one out of range, are left alone.
+	var r := await _sig_range("warrant", Vector3.ZERO)
 	var world: Node3D = r[0]
 	var v: ArcadeVehicle = r[1]
-	var target: ArcadeVehicle = r[2]
-	var hp := target.health.current
-	check(v.specials.fire(), "Spike Net fires")
-	await _frames(50)
-	check(target.health.current < hp, "Spike Net hurts the car it catches")
-	check(target.status.is_snared(), "Spike Net snares its wheels")
+	var target: ArcadeVehicle = null
+	var hp := 0.0
+	check(v.specials.selected == "taser_pulse", "Warrant's own special is the Taser Pulse")
+	var near_cars: Array[ArcadeVehicle] = []
+	for at in [Vector3(6, 1.2, 0), Vector3(-6, 1.2, 2), Vector3(0, 1.2, -7), Vector3(3, 1.2, 8), Vector3(-9, 1.2, -8), Vector3(0, 1.2, 30)]:
+		var drone := VehicleFactory.create("scrap_drone", ScriptedDriver.new(), false, false)
+		world.add_child(drone)
+		drone.global_transform = Transform3D(Basis.IDENTITY, at)
+		drone.reset_physics_interpolation()
+		near_cars.append(drone)
+	await _frames(45)
+	var hps: Array[float] = []
+	var yaws: Array[float] = []
+	for c in near_cars:
+		hps.append(c.health.current)
+		yaws.append(c.global_rotation.y)
+	check(v.specials.fire(), "Taser Pulse fires")
+	await _frames(12)
+	var hit := 0
+	var lifted := 0
+	var shocked := 0
+	for i in 5:
+		if near_cars[i].health.current < hps[i]:
+			hit += 1
+		if near_cars[i].global_position.y > 1.8:
+			lifted += 1
+		if near_cars[i].status.is_shocked():
+			shocked += 1
+	check(hit == 4, "it hurts four of the five cars nearby, no more (%d)" % hit)
+	check(lifted == 4, "and throws those four up into the air (%d)" % lifted)
+	check(shocked == 4, "they're SHOCKED while they hang there (%d)" % shocked)
+	check(near_cars[4].health.current == hps[4], "the furthest of the five is the one left out")
+	check(near_cars[5].health.current == hps[5] and not near_cars[5].status.is_shocked(), "a car out of range isn't touched")
+	check(v.health.current == v.stats.max_health and not v.status.is_shocked(), "the Warrant itself isn't hurt")
+	await _frames(80)
+	var turned := 0
+	for i in 4:
+		if absf(wrapf(near_cars[i].global_rotation.y - yaws[i], -PI, PI)) > deg_to_rad(20.0):
+			turned += 1
+	check(turned >= 3, "they come down turned to face somewhere new (%d of 4)" % turned)
+	var landed := 0
+	for i in 4:
+		if near_cars[i].global_position.y < 2.0 and near_cars[i].global_transform.basis.y.dot(Vector3.UP) > 0.5:
+			landed += 1
+	check(landed == 4, "and land back on their wheels (%d)" % landed)
+	_measure["taser_turn_deg"] = rad_to_deg(absf(wrapf(near_cars[0].global_rotation.y - yaws[0], -PI, PI)))
 	world.queue_free()
 	await _frames(2)
+
+	# Bots use it when a car is close.
+	var td: Dictionary = GameData.signature("warrant")
+	check(str(td.get("kind", "")) == "taser" and int(td.get("max_targets", 0)) == 4, "warrant.json: the taser hits up to four cars")
 
 	# A snared car is held well under its top speed.
 	var pad := _make_pad()

@@ -177,7 +177,7 @@ func fire(backward: bool = false) -> bool:
 		target = Targeting.in_cone(vehicle, aim, float(w.get("view_cone_deg", 25.0)), 90.0)
 	var p := Projectile.new()
 	p.setup(id, vehicle, w)
-	var lobbed := w.has("lift")
+	var lobbed := w.has("lift") or w.has("arc_deg")
 	# The Seeker locks on and turns hard; curving shots (Firebrand) leave straight
 	# and bend gently toward the target; the Sledge ignores targets entirely.
 	if id == "seeker" or curves:
@@ -190,7 +190,10 @@ func fire(backward: bool = false) -> bool:
 	# they leave the car cleanly.
 	var carry := vehicle.linear_velocity if backward else fwd * maxf(vehicle.drive.speed, 0.0) * 0.5
 	var vel := dir * float(w.get("speed", 40.0)) + carry
-	if lobbed:
+	if w.has("arc_deg"):
+		# Lobbed at a set angle (Tar Pot).
+		vel = Projectile.lob_velocity(dir, float(w.get("speed", 20.0)), float(w["arc_deg"])) + carry
+	elif lobbed:
 		vel += Vector3.UP * float(w.get("lift", 8.0))
 	p.launch(start, vel)
 	GameAudio.play_at("launch", start, 0.9, 0.7 if id == "sledge" else 1.0)
@@ -317,6 +320,8 @@ func _fire_signature(backward: bool) -> bool:
 	match str(w.get("kind", "")):
 		"shockwave":
 			_shockwave(w)
+		"taser":
+			_taser(w)
 		"volley":
 			_shots("ember", w, backward, int(w.get("count", 5)), float(w.get("spread_deg", 24.0)))
 		"hook":
@@ -398,6 +403,50 @@ func _shockwave(w: Dictionary) -> void:
 	vehicle.last_impact = 18.0
 	Effects.shockwave(vehicle.get_parent(), origin, radius)
 	GameAudio.play_at("slam", origin, 1.0)
+
+
+## Taser Pulse: a ring of current from the car. The nearest `max_targets` cars
+## inside `radius` take damage, are thrown up into the air and spun round, and
+## lose their controls for `shock_s` while they hang there.
+func _taser(w: Dictionary) -> void:
+	var origin := vehicle.global_position
+	var radius := float(w.get("radius", 13.0))
+	for car in taser_targets(vehicle, radius, int(w.get("max_targets", 4))):
+		var d := car.global_position.distance_to(origin)
+		var f := 1.0 - d / radius
+		Effects.arc(vehicle.get_parent(), origin + Vector3.UP * 1.2, car.global_position + Vector3.UP * 0.4)
+		car.take_damage(lerpf(float(w.get("min_damage", 6.0)), float(w.get("damage", 12.0)), f), vehicle)
+		if not car.is_alive() or car.status.is_shielded():
+			continue
+		car.status.shock(float(w.get("shock_s", 1.3)))
+		car.drive.boosting = false
+		var v := car.linear_velocity
+		v.y = maxf(v.y, 0.0) + float(w.get("lift_speed", 8.5))
+		car.linear_velocity = v
+		# A twist in a random direction, plus a little roll, so it lands facing somewhere new.
+		var spin_dir := -1.0 if _rng.randf() < 0.5 else 1.0
+		var spin := deg_to_rad(float(w.get("spin_deg_per_s", 220.0))) * _rng.randf_range(0.8, 1.2) * spin_dir
+		var roll := deg_to_rad(float(w.get("roll_deg_per_s", 40.0))) * _rng.randf_range(-1.0, 1.0)
+		car.angular_velocity = Vector3.UP * spin + car.global_transform.basis.z * roll
+		car.last_impact = 10.0
+	Effects.taser_pulse(vehicle.get_parent(), origin, radius)
+	GameAudio.play_at("overdrive", origin, 1.0, 1.8)
+
+
+## The cars a Taser Pulse from `from` would hit: alive, within `radius`,
+## nearest first, at most `max_targets`.
+static func taser_targets(from: ArcadeVehicle, radius: float, max_targets: int) -> Array[ArcadeVehicle]:
+	var found: Array[ArcadeVehicle] = []
+	for node in from.get_tree().get_nodes_in_group("targets"):
+		if node == from or not (node is ArcadeVehicle) or not (node as ArcadeVehicle).is_alive():
+			continue
+		if (node as ArcadeVehicle).global_position.distance_to(from.global_position) <= radius:
+			found.append(node as ArcadeVehicle)
+	var o := from.global_position
+	found.sort_custom(func(a: ArcadeVehicle, b: ArcadeVehicle) -> bool: return a.global_position.distance_squared_to(o) < b.global_position.distance_squared_to(o))
+	if found.size() > max_targets:
+		found.resize(max_targets)
+	return found
 
 
 ## Mortar Spread: charges lobbed high over the bonnet in a fan.

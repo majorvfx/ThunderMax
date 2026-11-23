@@ -8,6 +8,13 @@ extends Node3D
 ## "view_cone_deg" is a slight curve that only bends toward a target still in
 ## front of the shot. A shot with neither flies dead straight (the Sledge).
 
+## Every shot reaches 15% further out from a car than the car's own body: a
+## shot that grazes within that margin counts as a hit. Shots with their own
+## "hit_radius" (boulders, shrapnel) get the same 15% on top.
+const HITBOX_SCALE := 1.15
+## The collision box sits this far above the car's origin (VehicleFactory).
+const BODY_OFFSET := Vector3(0, 0.12, 0)
+
 var kind := ""
 var owner_vehicle: ArcadeVehicle
 var data := {}
@@ -38,6 +45,14 @@ func setup(projectile_kind: String, from: ArcadeVehicle, projectile_data: Dictio
 	if kind == "saw" or kind == "boulder":
 		gravity = 20.0   # it rides along the ground
 	add_to_group("projectiles")
+
+
+## Launch velocity for a lobbed shot: `speed` along `dir` tipped up by `arc_deg`.
+static func lob_velocity(dir: Vector3, speed: float, arc_deg: float) -> Vector3:
+	var flat := Vector3(dir.x, 0.0, dir.z)
+	flat = flat.normalized() if flat.length_squared() > 0.0001 else Vector3.FORWARD
+	var a := deg_to_rad(arc_deg)
+	return flat * cos(a) * speed + Vector3.UP * sin(a) * speed
 
 
 func launch(at: Vector3, vel: Vector3) -> void:
@@ -152,8 +167,13 @@ func _physics_process(delta: float) -> void:
 	var q := PhysicsRayQueryParameters3D.create(from, to,
 		ArcadeVehicle.LAYER_WORLD | ArcadeVehicle.LAYER_VEHICLES | ArcadeVehicle.LAYER_PROPS, exclude)
 	var hit := get_world_3d().direct_space_state.intersect_ray(q)
+	if hit.is_empty() or not (hit["collider"] is ArcadeVehicle):
+		# A near miss on a car before the shot reaches the wall counts.
+		var graze := _graze_hit(from, hit["position"] if not hit.is_empty() else to)
+		if not graze.is_empty():
+			hit = graze
 	if hit.is_empty() and data.has("hit_radius"):
-		hit = _near_hit(to, float(data["hit_radius"]))
+		hit = _near_hit(to, float(data["hit_radius"]) * HITBOX_SCALE)
 	if not hit.is_empty():
 		if (kind == "saw" or kind == "boulder") and _saw_contact(hit):
 			_update_chain()
@@ -195,6 +215,36 @@ func _saw_contact(hit: Dictionary) -> bool:
 	Effects.sparks(get_parent(), at, n)
 	GameAudio.play_at("impact", at, 0.7, 1.6)
 	return true
+
+
+## The first car whose body, grown by HITBOX_SCALE, the step from `from` to
+## `to` passes through. Walks the step in short hops so fast shots can't skip
+## over the thin margin.
+func _graze_hit(from: Vector3, to: Vector3) -> Dictionary:
+	var cars: Array[ArcadeVehicle] = []
+	for node in get_tree().get_nodes_in_group("targets"):
+		if node == owner_vehicle or not (node is ArcadeVehicle):
+			continue
+		var car := node as ArcadeVehicle
+		if car.is_alive() and car.stats != null and car.global_position.distance_to(to) < car.stats.body_length + from.distance_to(to):
+			cars.append(car)
+	if cars.is_empty():
+		return {}
+	var steps := maxi(1, ceili(from.distance_to(to) / 0.2))
+	for i in range(1, steps + 1):
+		var p := from.lerp(to, float(i) / float(steps))
+		for car in cars:
+			if in_hitbox(car, p):
+				var c := car.global_transform * BODY_OFFSET
+				return {"position": p, "normal": (p - c).normalized() if p.distance_to(c) > 0.01 else Vector3.UP, "collider": car}
+	return {}
+
+
+## Whether `at` is inside the car's body box grown by HITBOX_SCALE.
+static func in_hitbox(car: ArcadeVehicle, at: Vector3) -> bool:
+	var local := car.global_transform.affine_inverse() * at - BODY_OFFSET
+	var half := Vector3(car.stats.body_width, car.stats.body_height, car.stats.body_length) * 0.5 * HITBOX_SCALE
+	return absf(local.x) <= half.x and absf(local.y) <= half.y and absf(local.z) <= half.z
 
 
 ## Chunky shots (boulders, shrapnel) hit a car that comes within `radius` of

@@ -45,7 +45,7 @@ next time; **Change car** in the pause menu goes back to the select screen.
 | **Cinder**: a stripped dune buggy, all roll cage and fuel cell | Light | 70 | 34 m/s | **Ember Fan**: five little rockets in a fan; each one sets a brief fire |
 | **Hogshead**: a fuel tanker poured full of concrete | Heavy | 150 | 25 m/s | **Dead Weight**: drops the tank on its jacks; cars within 12 m are hurt and thrown clear |
 | **Sawback**: a street sweeper with blades where the brushes were | Medium | 110 | 28 m/s | **Ripsaw**: a spinning blade that runs along the ground and bounces off walls three times |
-| **Warrant**: a repo agency's armoured interceptor, light bar shot out | Medium | 90 | 31 m/s | **Spike Net**: a chain net that snags the target's wheels; its top speed drops to under a third for 2 s |
+| **Warrant**: a repo agency's armoured interceptor, light bar shot out | Medium | 90 | 31 m/s | **Taser Pulse**: a ring of current that hits up to four cars within 13 m, throws them into the air and spins them round; they can't steer until they land |
 | **Bastion**: a six-wheel surplus troop carrier with a mortar tube | Heavy | 160 | 23 m/s | **Mortar Spread**: lobs five small charges in a fan over the bonnet; each bursts where it lands |
 | **Mourner**: a rusted hearse with plate over the side glass | Medium | 80 | 30 m/s | **Pall**: kicks a casket out the back that bursts into black smoke; anyone inside burns and rockets lose their lock |
 | **Bucketmouth**: a wheel loader with a toothed bucket | Heavy | 150 | 22 m/s | **Scoop and Hurl**: scoops the car right in front and flings it back over the cab |
@@ -69,8 +69,8 @@ order in `data/roster.json`, so new cars are mostly data.
 | ![Slag Hook](docs/screenshots/sig_slag_hook.png) | ![Ember Fan](docs/screenshots/sig_ember_fan.png) |
 | **Dead Weight** | **Ripsaw** |
 | ![Dead Weight](docs/screenshots/sig_dead_weight.png) | ![Ripsaw](docs/screenshots/sig_ripsaw.png) |
-| **Spike Net** | **Mortar Spread** |
-| ![Spike Net](docs/screenshots/sig_spike_net.png) | ![Mortar Spread](docs/screenshots/sig_mortar_spread.png) |
+| **Taser Pulse** | **Mortar Spread** |
+| ![Taser Pulse](docs/screenshots/sig_taser_pulse.png) | ![Mortar Spread](docs/screenshots/sig_mortar_spread.png) |
 | **Pall** | **Scoop and Hurl** |
 | ![Pall](docs/screenshots/sig_pall.png) | ![Scoop and Hurl](docs/screenshots/sig_scoop_and_hurl.png) |
 | **Rockslide** | **Shrapnel Ring** |
@@ -208,6 +208,23 @@ Analog steering follows whatever stick is bound to Steer left / right, so you ca
 to the right stick.
 
 ![Remap controls](docs/screenshots/remap_controls.png)
+
+## What's new in Iron Carnage update 3
+
+- **Bigger projectile hitboxes**: every rocket, bomb and thrown weapon now hits a car it passes
+  within 15% of the car's body, not only one it touches. Boulders and shrapnel, which already
+  had a wider reach, get the same 15% on top.
+- **Fire bombs arc higher**: the Fire Jug combo and the Tar Pot pickup are both thrown 5 degrees
+  higher (Fire Jug 20 to 25 degrees, Tar Pot 24 to 29) at the same speed, so they also land a
+  little further out.
+- **Warrant's new special, Taser Pulse**, replaces the Spike Net. A ring of current hits up to
+  four cars within 13 m (nearest first), throws them into the air and spins them round. While
+  they hang there they're SHOCKED: no steering or throttle until they land, facing somewhere
+  new. Bots fire it when you're close.
+
+| Taser Pulse | A moment later |
+| --- | --- |
+| ![Taser Pulse](docs/screenshots/sig_taser_pulse.png) | ![Thrown](docs/screenshots/sig_taser_pulse_air.png) |
 
 ## What's new in Iron Carnage update 2
 
