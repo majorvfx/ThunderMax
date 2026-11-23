@@ -160,7 +160,7 @@ func _run() -> void:
 	# Each car's own special, fired at a drone in the west lane.
 	for shot in [["rustjaw", "sig_slag_hook", 0.18, 20.0], ["cinder", "sig_ember_fan", 0.2, 22.0],
 			["hogshead", "sig_dead_weight", 0.2, 7.0], ["sawback", "sig_ripsaw", 0.42, 20.0],
-			["warrant", "sig_spike_net", 0.25, 20.0], ["bastion", "sig_mortar_spread", 0.5, 15.0],
+			["warrant", "sig_taser_pulse", 0.12, 7.0], ["bastion", "sig_mortar_spread", 0.5, 15.0],
 			["mourner", "sig_pall", 1.4, -9.0], ["bucketmouth", "sig_scoop_and_hurl", 0.35, 7.0],
 			["tonnage", "sig_rockslide", 0.6, -14.0], ["vandal", "sig_shrapnel_ring", 0.1, 8.0],
 			["lancet", "sig_ghost_run", 0.4, 20.0], ["sermon", "sig_hydraulic_hop", 0.3, 9.0]]:

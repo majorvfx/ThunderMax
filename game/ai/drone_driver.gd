@@ -189,6 +189,8 @@ func _want_special(car: ArcadeVehicle, dist: float, angle: float, behind: bool) 
 			return behind and dist < 22.0
 		"shockwave", "ring", "hop", "scoop":
 			return dist < 9.0
+		"taser":
+			return dist < float(data.get("radius", 13.0)) * 0.8
 		"cloak":
 			return car.health.fraction() < 0.5
 	return not behind and angle < 0.25 and dist < 45.0

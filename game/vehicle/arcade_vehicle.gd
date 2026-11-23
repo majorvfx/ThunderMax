@@ -111,7 +111,7 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 
 	if driver != null:
 		frame = driver.get_frame(self, dt)
-	var drive_frame := frame.idle() if status.is_frozen() else frame
+	var drive_frame := frame.idle() if status.is_frozen() or status.is_shocked() else frame
 	if status.is_jammed() and drive_frame.turbo:
 		drive_frame = _without_turbo(drive_frame)
 
@@ -163,11 +163,16 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	var yaw_now := w.dot(n)
 	var target_yaw := drive.yaw_rate * (1.0 if grounded else stats.air_control)
 	var yaw_blend := 1.0 - exp(-stats.yaw_response * dt * (1.0 if grounded else 0.4))
+	# Taser Pulse: in the air the spin it was given carries on and the car only
+	# slowly rights itself, so it lands facing somewhere new.
+	var shocked_air := status.is_shocked() and not grounded
+	if shocked_air:
+		yaw_blend *= 0.08
 	var yaw_new := lerpf(yaw_now, target_yaw, yaw_blend)
 	var w_other := w - n * yaw_now
 	var desired_up := ground_normal if grounded else Vector3.UP
 	var correction := up.cross(desired_up) * (stats.upright_strength if grounded else stats.air_upright)
-	var upright_blend := 1.0 - exp(-(8.0 if grounded else 2.5) * dt)
+	var upright_blend := 1.0 - exp(-(8.0 if grounded else (0.8 if shocked_air else 2.5)) * dt)
 	w_other = w_other.lerp(correction, upright_blend)
 	state.angular_velocity = n * yaw_new + w_other
 

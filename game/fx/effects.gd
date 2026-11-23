@@ -224,6 +224,51 @@ static func shockwave(parent: Node, pos: Vector3, radius: float) -> void:
 	sparks(parent, pos, Vector3.UP)
 
 
+## Taser Pulse: a crackling blue-white ring that races out from the car.
+static func taser_pulse(parent: Node, pos: Vector3, radius: float) -> void:
+	if parent == null or not parent.is_inside_tree():
+		return
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mat.albedo_color = Color(0.6, 0.85, 1.0, 0.9)
+	mat.emission_enabled = true
+	mat.emission = Color(0.5, 0.8, 1.0)
+	mat.emission_energy_multiplier = 4.0
+	var ring := MeshInstance3D.new()
+	var torus := TorusMesh.new()
+	torus.inner_radius = 0.92
+	torus.outer_radius = 1.0
+	torus.rings = 32
+	torus.ring_segments = 6
+	torus.material = mat
+	ring.mesh = torus
+	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	ring.position = pos + Vector3.UP * 0.5
+	ring.scale = Vector3(0.6, 0.5, 0.6)
+	parent.add_child(ring)
+	var tw := ring.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(ring, "scale", Vector3(radius, 1.0, radius), 0.3).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	tw.tween_property(mat, "albedo_color:a", 0.0, 0.4)
+	tw.chain().tween_callback(ring.queue_free)
+	var light := OmniLight3D.new()
+	light.light_color = Color(0.55, 0.8, 1.0)
+	light.light_energy = 5.0
+	light.omni_range = radius
+	light.position = pos + Vector3.UP * 1.5
+	parent.add_child(light)
+	var lt := light.create_tween()
+	lt.tween_property(light, "light_energy", 0.0, 0.35)
+	lt.tween_callback(light.queue_free)
+	# A few short bolts crackling outward around the ring.
+	for i in 6:
+		var a := TAU * float(i) / 6.0 + randf_range(-0.3, 0.3)
+		var out := Vector3(cos(a), 0.0, sin(a))
+		arc(parent, pos + Vector3.UP * 1.0, pos + out * radius * randf_range(0.5, 0.9) + Vector3.UP * 0.3)
+
+
 ## Arc Coil: a jagged white-blue bolt between two points that flickers out fast.
 static func arc(parent: Node, from: Vector3, to: Vector3) -> void:
 	if parent == null or not parent.is_inside_tree():

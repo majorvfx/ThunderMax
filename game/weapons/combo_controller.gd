@@ -126,8 +126,8 @@ func _fire_projectile(kind: String, m: Dictionary) -> void:
 	var dir := fwd
 	var vel := dir * float(m.get("speed", 40.0))
 	if kind == "fire_jug":
-		vel = fwd * 22.0 + Vector3.UP * 8.0 + vehicle.linear_velocity * 0.6
-		p.gravity = 22.0
+		vel = Projectile.lob_velocity(fwd, float(m.get("speed", 23.4)), float(m.get("arc_deg", 25.0))) + vehicle.linear_velocity * 0.6
+		p.gravity = float(m.get("gravity", 22.0))
 	vehicle.get_parent().add_child(p)
 	p.launch(start, vel)
 	GameAudio.play_at("launch", start, 0.8, 1.3 if kind == "cold_snap" else 0.8)

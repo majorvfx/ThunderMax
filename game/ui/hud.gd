@@ -171,6 +171,9 @@ func _draw_status(pos: Vector2, fs: int) -> float:
 	if st.is_snared():
 		draw_string(_font, Vector2(pos.x, y), "SNARED  %.1f" % st.snare_time, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.85, 0.8, 0.7))
 		y += fs + 6
+	if st.is_shocked():
+		draw_string(_font, Vector2(pos.x, y), "SHOCKED  %.1f" % st.shock_time, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.55, 0.85, 1.0))
+		y += fs + 6
 	if st.is_jammed():
 		draw_string(_font, Vector2(pos.x, y), "TURBO DEAD  %.1f" % st.jam_time, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.6, 0.8, 1.0))
 		y += fs + 6

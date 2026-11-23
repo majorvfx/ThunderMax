@@ -15,6 +15,7 @@ var overdrive_time := 0.0    ## Rivet Storm: faster, harder-hitting guns, no hea
 var snare_time := 0.0        ## Spike Net: wheels tangled, top speed cut hard
 var snare_speed_scale := 0.35
 var jam_time := 0.0          ## Arc Coil: turbo shorted out
+var shock_time := 0.0        ## Taser Pulse: lifted and spun, steering and the upright pull cut out
 var _cooldowns := {}
 
 
@@ -35,6 +36,7 @@ func reset() -> void:
 	overdrive_time = 0.0
 	snare_time = 0.0
 	jam_time = 0.0
+	shock_time = 0.0
 	_cooldowns.clear()
 
 
@@ -66,6 +68,10 @@ func is_jammed() -> bool:
 	return jam_time > 0.0
 
 
+func is_shocked() -> bool:
+	return shock_time > 0.0
+
+
 ## Advances timers. Returns burn damage dealt this step.
 func tick(dt: float) -> float:
 	energy = minf(energy_max, energy + energy_regen * dt)
@@ -75,6 +81,7 @@ func tick(dt: float) -> float:
 	overdrive_time = maxf(0.0, overdrive_time - dt)
 	snare_time = maxf(0.0, snare_time - dt)
 	jam_time = maxf(0.0, jam_time - dt)
+	shock_time = maxf(0.0, shock_time - dt)
 	for k in _cooldowns.keys():
 		_cooldowns[k] = maxf(0.0, _cooldowns[k] - dt)
 	if burn_time <= 0.0:
@@ -141,6 +148,13 @@ func jam(seconds: float) -> void:
 	if is_shielded():
 		return
 	jam_time = maxf(jam_time, seconds)
+
+
+## Taser Pulse: the current locks up the car's controls while it hangs in the air.
+func shock(seconds: float) -> void:
+	if is_shielded():
+		return
+	shock_time = maxf(shock_time, seconds)
 
 
 func overdrive(seconds: float) -> void:
